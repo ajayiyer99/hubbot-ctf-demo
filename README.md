@@ -13,6 +13,23 @@ Azure OpenAI endpoint (**Live** engine, key stored only in your browser).
 > placeholder; the Sentinel pipeline and auto-remediation timeline are **simulated**
 > in the browser. No secrets or credentials are contained here.
 
+## Enable GitHub Pages (one-time, ~20 seconds)
+
+The live URL above returns 404 until Pages is enabled once. This repo's default
+GitHub Actions token is **read-only**, so the Actions-based deploy fails at
+"Configure Pages" (`Resource not accessible by integration`). Use the token-free
+built-in builder instead:
+
+1. Open **Settings → Pages** (`https://github.com/ajayiyer99/hubbot-ctf-demo/settings/pages`).
+2. Under **Build and deployment → Source**, choose **Deploy from a branch**.
+3. Set **Branch: `main`** and **folder: `/ (root)`**, then click **Save**.
+4. Wait ~1–2 min, then load https://ajayiyer99.github.io/hubbot-ctf-demo/
+
+`index.html` and `.nojekyll` are already at the repo root, so the site serves as-is
+(no Jekyll processing, no workflow needed). The `.github/workflows/pages.yml`
+workflow is kept only as an optional manual path for accounts whose Actions token
+permits Pages writes.
+
 ## Two modes
 
 - **🎭 Theater (CTF)** — jailbreak HubBot: extract its planted flag, leak its system
