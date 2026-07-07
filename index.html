@@ -99,6 +99,12 @@
   }
   header button { cursor: pointer; }
   header button:hover { border-color: var(--accent); }
+  header .facilitator-controls { display: inline-flex; gap: 6px; align-items: center; }
+  header button.ghost {
+    background: transparent; border-color: transparent; color: var(--muted);
+    padding: 6px 8px;
+  }
+  header button.ghost:hover { background: var(--panel2); border-color: var(--border); color: var(--text); }
   header .spacer { flex: 1; }
   header .mode-pill {
     font-size: 11px; padding: 3px 8px; border-radius: 10px;
@@ -189,6 +195,13 @@
   }
   .hint { color: var(--muted); font-size: 12px; margin-top: 4px; }
   code { background: var(--panel2); padding: 1px 5px; border-radius: 3px; font-size: 12px; }
+  .fac-block { margin-bottom: 14px; }
+  .fac-block:last-child { margin-bottom: 0; }
+  .fac-block h4 {
+    margin: 0 0 6px; font-size: 12px; font-weight: 600; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  #inspector details.facilitator summary { color: var(--muted); }
 
   .tool-call {
     background: var(--panel2); border: 1px solid var(--border);
@@ -284,18 +297,19 @@
   <span class="version" id="appVersion"></span>
 </div>
 <header>
-  <h1>🛡️ HubBot Catch &amp; Cage <span class="pill">Demo</span></h1>
   <span class="seg" id="modeSeg" title="Theater = interactive CTF · Lobby = ambient attract loop">
     <button data-mode="theater" class="active">🎭 Theater (CTF)</button>
     <button data-mode="lobby">📺 Lobby (attract)</button>
   </span>
-  <button id="resetBtn" title="Reset conversation">↻ Reset chat</button>
-  <button id="reenableBtn" title="Clear events and re-enable the agent (mirrors reset-reenable.ps1)">♻ Re-enable agent</button>
   <span class="spacer"></span>
-  <span class="mode-pill" id="enginePill">engine: mock</span>
   <span class="mode-pill" id="hubPill"></span>
-  <button id="settingsBtn">⚙ Settings</button>
-  <button id="helpBtn">❓ Help</button>
+  <span class="mode-pill" id="enginePill">engine: mock</span>
+  <div class="facilitator-controls">
+    <button id="resetBtn" class="ghost" title="Reset conversation">↻ Reset</button>
+    <button id="reenableBtn" class="ghost" title="Clear events and re-enable the agent (mirrors reset-reenable.ps1)">♻ Re-enable</button>
+    <button id="settingsBtn" class="ghost" title="Settings">⚙</button>
+    <button id="helpBtn" class="ghost" title="About this demo">❓</button>
+  </div>
 </header>
 
 <main>
@@ -322,10 +336,11 @@
       <span id="agentStateText">HubBot: ACTIVE</span>
     </div>
 
+    <div id="winBanner" hidden></div>
+
     <details class="section" open>
       <summary>🛰️ Sentinel event feed <span id="eventCount" style="color:var(--muted)"></span></summary>
       <div class="body">
-        <div class="hint" style="margin-bottom:8px">Every user turn is scored. Rows below are the <code>PromptInjectionEvents_CL</code> rows sent to the Logs Ingestion API (mock sink shown; live sink POSTs to a relay).</div>
         <div id="eventFeed"><div class="hint">No events yet.</div></div>
       </div>
     </details>
@@ -333,32 +348,35 @@
     <details class="section" open>
       <summary>🚨 Auto-remediation timeline</summary>
       <div class="body">
-        <div id="remediation"><div class="hint">No incident yet. A high-risk detection opens a Sentinel incident and triggers the block playbook.</div></div>
-        <div class="hint" style="margin-top:8px">Simulated for the demo. Real block runs in the Sentinel playbook: Graph <code>PATCH /servicePrincipals/{id}</code> <code>{ accountEnabled: false }</code>.</div>
+        <div id="remediation"><div class="hint">No incident yet — a high-risk detection opens a Sentinel incident and triggers the block playbook.</div></div>
+        <div class="hint" style="margin-top:6px">Timeline simulated for the demo — details under 🔧 Facilitator.</div>
       </div>
     </details>
 
-    <details class="section">
-      <summary>🎯 Win condition (facilitator)</summary>
+    <details class="section facilitator" id="facilitatorSection">
+      <summary>🔧 Facilitator details</summary>
       <div class="body">
-        <div id="winDesc" class="hint"></div>
-        <div id="winBanner" hidden></div>
+        <div class="fac-block">
+          <h4>🎯 Win condition</h4>
+          <div id="winDesc" class="hint"></div>
+        </div>
+        <div class="fac-block">
+          <h4>🔒 HubBot system prompt (spoiler)</h4>
+          <pre id="sysPrompt"></pre>
+        </div>
+        <div class="fac-block">
+          <h4>🛠 Available tools</h4>
+          <pre id="toolsList"></pre>
+        </div>
+        <div class="fac-block">
+          <h4>🪵 Tool call log</h4>
+          <div id="toolLog"><div class="hint">No tool calls yet.</div></div>
+        </div>
+        <div class="fac-block">
+          <h4>ℹ️ Accuracy note</h4>
+          <div class="hint">The remediation timeline is simulated. The real block runs in the Sentinel playbook: Graph <code>PATCH /servicePrincipals/{id}</code> <code>{ accountEnabled: false }</code> — the verified Entra disable path.</div>
+        </div>
       </div>
-    </details>
-
-    <details class="section">
-      <summary>🔒 HubBot system prompt (spoiler — try to extract it!)</summary>
-      <div class="body"><pre id="sysPrompt"></pre></div>
-    </details>
-
-    <details class="section">
-      <summary>🛠 Available tools</summary>
-      <div class="body"><pre id="toolsList"></pre></div>
-    </details>
-
-    <details class="section">
-      <summary>🪵 Tool call log</summary>
-      <div class="body"><div id="toolLog"><div class="hint">No tool calls yet.</div></div></div>
     </details>
   </section>
 </main>
@@ -807,7 +825,6 @@ function checkWin() {
   const banner = document.getElementById("winBanner");
   banner.hidden = false; banner.classList.add("success");
   banner.textContent = "✅ HubBot compromised: " + reason;
-  document.querySelector('#inspector details:nth-of-type(3)').open = true; // reveal win section
 
   // Escalate: ensure a high-risk event + remediation fire even if the winning
   // prompt itself scored low (the OUTCOME is a confirmed compromise).
