@@ -1,12 +1,23 @@
 name: Deploy to GitHub Pages
 
-# Publishes index.html (HubBot Catch & Cage CTF frontend) to GitHub Pages.
-# Repo root is served as the site root, so the app loads at:
-#   https://ajayiyer99.github.io/hubbot-ctf-demo/
+# NOTE (2026-07-07): This repo's default Actions GITHUB_TOKEN is read-only, so the
+# automatic "Configure Pages" (enablement) call fails with
+#   "Create Pages site failed. Error: Resource not accessible by integration"
+# and the same cap would likely block the deploy step too.
+#
+# RECOMMENDED enablement is therefore the token-free "Deploy from a branch" path:
+#   Settings -> Pages -> Build and deployment -> Source: "Deploy from a branch"
+#   -> Branch: main  /  folder: / (root)  -> Save
+# That uses GitHub's built-in pages builder (no Actions token needed) and serves
+# index.html (+ .nojekyll) directly at https://ajayiyer99.github.io/hubbot-ctf-demo/
+#
+# This Actions workflow is kept only as an OPTIONAL path for accounts whose
+# workflow token permits Pages writes. It is manual-only (workflow_dispatch) so it
+# no longer auto-fails on every push. To use it: set Settings -> Pages -> Source:
+# "GitHub Actions", ensure Settings -> Actions -> General -> Workflow permissions is
+# "Read and write", then run this workflow from the Actions tab.
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
