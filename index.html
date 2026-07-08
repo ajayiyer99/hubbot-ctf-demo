@@ -984,7 +984,7 @@ function renderEventFeed() {
     const level = ev.RiskScore >= CONFIG.riskThreshold ? "high" : ev.RiskScore >= 40 ? "medium" : "low";
     const div = document.createElement("div");
     div.className = "sev-event " + level;
-    const shownPrompt = state.uiMode === "lobby" ? "[sanitized]" : escapeHtml(truncate(ev.RawPrompt, 160));
+    const shownPrompt = escapeHtml(truncate(ev.RawPrompt, 160));
     div.innerHTML =
       '<div class="row1"><span class="sev-tag">PromptInjectionEvents_CL</span>' +
       '<span class="risk ' + level + '">risk ' + ev.RiskScore + '</span></div>' +
@@ -1083,18 +1083,19 @@ function sendSample(text) {
 }
 
 // ---------- UI mode (theater / lobby) ----------
+// NOTE: Lobby now mirrors the Theater (CTF) experience exactly. Theater will be
+// redesigned next; Lobby preserves today's interactive behaviour until then.
 function setUiMode(mode) {
   state.uiMode = mode;
   document.querySelectorAll("#modeSeg button").forEach(b => b.classList.toggle("active", b.dataset.mode === mode));
-  const lobby = mode === "lobby";
-  document.getElementById("inputForm").hidden = lobby;
-  document.getElementById("samplePrompts").hidden = lobby;
-  document.getElementById("lobbyNote").hidden = !lobby;
-  document.getElementById("scenarioTitle").textContent = lobby ? "📺 Lobby — Sentinel incident attract loop" : "🎭 Envisioning Theater — Jailbreak HubBot";
-  document.getElementById("scenarioDesc").textContent = lobby
-    ? "Ambient, sanitized replay of prompt-injection incidents and auto-remediation. No live chat."
-    : "Chat with HubBot below — or tap an example prompt. Every message is scored live in the Security Monitor on the right.";
-  if (lobby) startLobbyLoop(); else { stopLobbyLoop(); resetChat(); }
+  stopLobbyLoop();
+  document.getElementById("inputForm").hidden = false;
+  document.getElementById("samplePrompts").hidden = false;
+  document.getElementById("lobbyNote").hidden = true;
+  document.getElementById("scenarioTitle").textContent = "🎭 Envisioning Theater — Jailbreak HubBot";
+  document.getElementById("scenarioDesc").textContent =
+    "Chat with HubBot below — or tap an example prompt. Every message is scored live in the Security Monitor on the right.";
+  resetChat();
   renderEventFeed();
 }
 
