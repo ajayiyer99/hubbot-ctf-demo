@@ -387,11 +387,43 @@
   dialog button.secondary { color: var(--text); }
   dialog button.secondary:hover { background: var(--panel2); }
 
+  /* Join-from-your-phone (QR + short link) */
+  #joinCard { display: flex; gap: 14px; align-items: center; margin: 0 0 12px;
+    padding: 12px 14px; background: #fff; border: 1px solid var(--border);
+    border-left: 4px solid var(--accent); border-radius: 12px; box-shadow: var(--shadow); }
+  #joinCard .join-qr { width: 92px; height: 92px; flex: 0 0 92px; padding: 5px;
+    background: #fff; border: 1px solid var(--border); border-radius: 8px; }
+  #joinCard .join-qr svg { width: 100%; height: 100%; display: block; }
+  .join-copy { display: flex; flex-direction: column; min-width: 0; }
+  .join-title { font-weight: 700; font-size: 13.5px; color: var(--text); }
+  .join-sub { font-size: 12px; color: var(--muted); margin-top: 1px; }
+  .join-link { font-size: 15px; font-weight: 800; color: var(--accent);
+    text-decoration: none; margin-top: 3px; word-break: break-all; }
+  .join-link:hover { text-decoration: underline; }
+  .join-enlarge { align-self: flex-start; margin-top: 8px; font: inherit; font-size: 12px;
+    cursor: pointer; color: var(--accent); background: #f2f8fe;
+    border: 1px solid var(--border); border-radius: 20px; padding: 4px 12px; }
+  .join-enlarge:hover { border-color: var(--accent); }
+
+  /* Join dialog — big QR for projecting on the theater screen */
+  #joinDialog { text-align: center; min-width: 380px; max-width: 92vw; }
+  #joinDialog h2 { font-size: 20px; }
+  .join-dialog-lead { font-size: 14px; color: var(--muted); margin: 0 auto 16px; max-width: 400px; }
+  .join-qr-big { width: 264px; height: 264px; margin: 0 auto 14px; padding: 14px;
+    background: #fff; border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); }
+  .join-qr-big svg { width: 100%; height: 100%; display: block; }
+  .join-biglink { display: inline-block; font-size: 26px; font-weight: 800;
+    color: var(--accent); text-decoration: none; letter-spacing: .3px; }
+  .join-biglink:hover { text-decoration: underline; }
+  .join-safe { margin: 12px auto 0; max-width: 380px; }
+  #joinDialog .row { justify-content: center; }
+
   /* Stack on small / touch screens */
   @media (max-width: 880px) {
     main { grid-template-columns: 1fr; grid-template-rows: minmax(0,1.2fr) minmax(0,1fr); }
     #chatPanel { border-right: none; border-bottom: 1px solid var(--border); }
     .msg { max-width: 88%; }
+    #joinCard, #joinBtn { display: none; }
   }
 </style>
 </head>
@@ -412,6 +444,7 @@
   <span class="mode-pill" id="hubPill"></span>
   <span class="mode-pill" id="enginePill">engine: mock</span>
   <div class="facilitator-controls">
+    <button id="joinBtn" class="ghost" title="Show the QR code &amp; short link so attendees can join from their phones">📱 Join</button>
     <button id="resetBtn" class="ghost" title="Reset conversation">↻ Reset</button>
     <button id="reenableBtn" class="ghost" title="Clear events and re-enable the agent (mirrors reset-reenable.ps1)">♻ Re-enable</button>
     <button id="settingsBtn" class="ghost" title="Settings">⚙ Settings</button>
@@ -440,6 +473,16 @@
   </section>
 
   <section id="inspector">
+    <div id="joinCard">
+      <div id="joinQrSmall" class="join-qr" aria-hidden="true"></div>
+      <div class="join-copy">
+        <div class="join-title">📱 Play on your own device</div>
+        <div class="join-sub">Scan the code — or open this link:</div>
+        <a id="joinLink" class="join-link" href="https://is.gd/hubbotctf" target="_blank" rel="noopener">is.gd/hubbotctf</a>
+        <button id="joinEnlarge" class="join-enlarge" type="button">⤢ Show large code</button>
+      </div>
+    </div>
+
     <div id="agentState" class="active">
       <span id="agentStateIcon">🟢</span>
       <span id="agentStateText">HubBot: ACTIVE</span>
@@ -539,6 +582,15 @@
   </ul>
   <p class="hint">All VIP data is synthetic. The block API asserted is the verified Entra Agent ID disable path; "Agent 365" is not claimed. See webapp/README.md.</p>
   <div class="row"><button id="closeHelp">Got it</button></div>
+</dialog>
+
+<dialog id="joinDialog">
+  <h2>📱 Jailbreak HubBot from your phone</h2>
+  <p class="join-dialog-lead">Point your phone camera at the code — or type the link into any browser — then try to trick HubBot into leaking its secret <code>FLAG{…}</code>.</p>
+  <div id="joinQrBig" class="join-qr-big" aria-hidden="true"></div>
+  <a class="join-biglink" href="https://is.gd/hubbotctf" target="_blank" rel="noopener">is.gd/hubbotctf</a>
+  <p class="join-safe hint">Rather not scan a QR code? The link above is safe to type by hand — it opens this exact page.</p>
+  <div class="row"><button id="closeJoin">Close</button></div>
 </dialog>
 
 <script>
@@ -1192,6 +1244,28 @@ function setBusy(b) {
 }
 
 // ---------- Wiring ----------
+// ---------- Join-from-your-phone (QR + short link) ----------
+// Attendees in the Envisioning Theater scan this to play from their own device.
+// QR encodes the live Pages URL directly (works even if the shortener is down);
+// the is.gd short link is the type-it-by-hand fallback for QR-shy visitors.
+const JOIN_URL = "https://ajayiyer99.github.io/hubbot-ctf-demo/";
+const JOIN_SHORTLINK = "https://is.gd/hubbotctf";
+const QR_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 37 37" shape-rendering="crispEdges"><path fill="#ffffff" d="M0 0h37v37H0z"/><path stroke="#11304f" d="M2 2.5h7m4 0h2m3 0h1m2 0h2m1 0h2m2 0h7M2 3.5h1m5 0h1m2 0h1m1 0h1m3 0h2m1 0h1m1 0h1m1 0h1m3 0h1m5 0h1M2 4.5h1m1 0h3m1 0h1m1 0h1m2 0h1m2 0h1m1 0h1m4 0h2m1 0h1m1 0h1m1 0h3m1 0h1M2 5.5h1m1 0h3m1 0h1m1 0h1m1 0h3m5 0h2m1 0h1m1 0h2m1 0h1m1 0h3m1 0h1M2 6.5h1m1 0h3m1 0h1m1 0h1m2 0h1m1 0h4m3 0h1m2 0h2m1 0h1m1 0h3m1 0h1M2 7.5h1m5 0h1m1 0h1m1 0h3m6 0h1m1 0h1m4 0h1m5 0h1M2 8.5h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7M10 9.5h2m1 0h1m4 0h1m1 0h6M2 10.5h1m1 0h5m3 0h5m2 0h1m1 0h1m2 0h3m1 0h5M2 11.5h1m2 0h1m4 0h3m2 0h2m2 0h4m2 0h1m2 0h2m1 0h2m1 0h1M5 12.5h5m5 0h5m2 0h1m1 0h1m2 0h1m2 0h1m1 0h2M2 13.5h1m1 0h2m1 0h1m1 0h1m1 0h2m2 0h1m2 0h5m3 0h1m1 0h1m1 0h3m1 0h1M6 14.5h3m1 0h4m2 0h1m1 0h1m3 0h5m2 0h3M7 15.5h1m2 0h4m3 0h1m1 0h2m2 0h1m1 0h1m2 0h1m2 0h1m1 0h2M4 16.5h3m1 0h1m1 0h1m3 0h1m2 0h2m1 0h1m1 0h3m2 0h3m1 0h1m1 0h1M4 17.5h1m1 0h1m2 0h6m2 0h1m2 0h1m2 0h2m2 0h2m2 0h2M2 18.5h1m1 0h2m2 0h1m3 0h3m1 0h2m1 0h1m4 0h2m1 0h1m1 0h3m2 0h1M2 19.5h1m1 0h2m3 0h3m1 0h1m1 0h1m2 0h1m2 0h5m2 0h2m1 0h2m1 0h1M2 20.5h1m4 0h2m2 0h2m1 0h1m1 0h3m1 0h1m2 0h1m3 0h4m1 0h2M3 21.5h1m1 0h1m6 0h3m2 0h1m3 0h4m1 0h2m1 0h4m1 0h1M2 22.5h2m1 0h1m2 0h1m1 0h1m2 0h2m5 0h2m1 0h1m2 0h2m2 0h2M2 23.5h2m3 0h1m1 0h1m1 0h1m4 0h3m3 0h4m2 0h1m2 0h2m1 0h1M2 24.5h1m2 0h1m1 0h2m1 0h1m2 0h2m1 0h1m4 0h1m8 0h1m1 0h2M2 25.5h1m3 0h1m2 0h2m2 0h4m1 0h1m2 0h3m3 0h1m1 0h1m2 0h2M2 26.5h1m2 0h2m1 0h3m1 0h2m5 0h1m1 0h1m4 0h5m2 0h2M10 27.5h1m1 0h1m3 0h1m1 0h4m2 0h1m1 0h1m3 0h1m1 0h1m1 0h1M2 28.5h7m2 0h2m4 0h1m1 0h1m2 0h1m1 0h3m1 0h1m1 0h1m1 0h2M2 29.5h1m5 0h1m1 0h1m1 0h1m1 0h2m2 0h3m4 0h2m3 0h4M2 30.5h1m1 0h3m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m2 0h4m1 0h6m1 0h1M2 31.5h1m1 0h3m1 0h1m1 0h2m2 0h1m1 0h2m2 0h1m6 0h1m2 0h2m2 0h1M2 32.5h1m1 0h3m1 0h1m1 0h6m1 0h4m1 0h2m4 0h2m1 0h2M2 33.5h1m5 0h1m2 0h3m1 0h3m2 0h1m2 0h2m2 0h1m2 0h3M2 34.5h7m1 0h5m1 0h2m1 0h2m1 0h1m2 0h2m2 0h1m3 0h1"/></svg>`;
+function mountJoinUi() {
+  const small = document.getElementById("joinQrSmall");
+  const big = document.getElementById("joinQrBig");
+  if (small) small.innerHTML = QR_SVG;
+  if (big) big.innerHTML = QR_SVG;
+  const dlg = document.getElementById("joinDialog");
+  const open = () => { if (dlg && typeof dlg.showModal === "function") dlg.showModal(); };
+  const joinBtn = document.getElementById("joinBtn");
+  const enlarge = document.getElementById("joinEnlarge");
+  const closeBtn = document.getElementById("closeJoin");
+  if (joinBtn) joinBtn.addEventListener("click", open);
+  if (enlarge) enlarge.addEventListener("click", open);
+  if (closeBtn) closeBtn.addEventListener("click", () => dlg && dlg.close());
+}
+
 function init() {
   document.querySelectorAll("#modeSeg button").forEach(b => b.addEventListener("click", () => setUiMode(b.dataset.mode)));
   document.getElementById("resetBtn").addEventListener("click", resetChat);
@@ -1202,6 +1276,7 @@ function init() {
   document.getElementById("modeSelect").addEventListener("change", toggleLiveSettings);
   document.getElementById("helpBtn").addEventListener("click", () => document.getElementById("helpDialog").showModal());
   document.getElementById("closeHelp").addEventListener("click", () => document.getElementById("helpDialog").close());
+  mountJoinUi();
 
   const form = document.getElementById("inputForm");
   const input = document.getElementById("userInput");
