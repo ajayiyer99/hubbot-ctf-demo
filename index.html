@@ -3202,28 +3202,41 @@ function buildEvent(text, risk, pattern) {
   };
 }
 
+// Simulated SOC latency so detection and response feel real-world, not instant.
+// detectionMs (+ jitter) models telemetry ingestion into Log Analytics plus
+// Defender-for-Cloud / analytics-rule evaluation before an alert surfaces in
+// Microsoft Sentinel; stepMs paces the SOAR playbook reveal (last step cages).
+const SIM_TIMING = { detectionMs: 2000, detectionJitterMs: 700, stepMs: 600 };
+
 function emitEvent(text, risk, pattern, opts) {
   opts = opts || {};
-  const row = buildEvent(text, risk, pattern);
-  state.events.push(row);
-  renderEventFeed();
+  const delay = opts.immediate ? 0 :
+    Math.max(0, SIM_TIMING.detectionMs + Math.round(Math.random() * SIM_TIMING.detectionJitterMs));
 
-  // Live sink: POST to relay (best-effort, non-blocking). The relay authenticates
-  // to the Logs Ingestion API; this browser never holds DCR credentials.
-  if (state.engine === "live" && CONFIG.relayUrl) {
-    try {
-      fetch(CONFIG.relayUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(row)
-      }).catch(() => {});
-    } catch {}
-  }
+  // Detection is not instantaneous: the prompt is ingested, the analytics rule
+  // evaluates, and only then does the alert land in the incident queue.
+  setTimeout(() => {
+    const row = buildEvent(text, risk, pattern);
+    state.events.push(row);
+    renderEventFeed();
 
-  // High risk -> open incident + run block playbook (simulated).
-  if (risk >= CONFIG.riskThreshold && !state.blocked) {
-    triggerRemediation(row, opts.escalated);
-  }
+    // Live sink: POST to relay (best-effort, non-blocking). The relay authenticates
+    // to the Logs Ingestion API; this browser never holds DCR credentials.
+    if (state.engine === "live" && CONFIG.relayUrl) {
+      try {
+        fetch(CONFIG.relayUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(row)
+        }).catch(() => {});
+      } catch {}
+    }
+
+    // High risk -> open incident + run block playbook (simulated), unless caged.
+    if (risk >= CONFIG.riskThreshold && !state.blocked) {
+      triggerRemediation(row, opts.escalated);
+    }
+  }, delay);
 }
 
 // ============================================================
@@ -3275,7 +3288,7 @@ function triggerRemediation(row, escalated) {
       el.querySelector(".rstate").textContent = (i === steps.length - 1) ? "🔒" : "✅";
       el.querySelector(".rtime").textContent = new Date().toLocaleTimeString([], { hour12: false }) + " UTC";
       if (i === steps.length - 1) setAgentBlocked();
-    }, 480 * (i + 1));
+    }, SIM_TIMING.stepMs * (i + 1));
   });
 }
 
