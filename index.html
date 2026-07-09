@@ -404,6 +404,9 @@
     cursor: pointer; color: var(--accent); background: #f2f8fe;
     border: 1px solid var(--border); border-radius: 20px; padding: 4px 12px; }
   .join-enlarge:hover { border-color: var(--accent); }
+  /* The QR / "join from your phone" affordance is Theater-only. */
+  body[data-mode="lobby"] #joinCard,
+  body[data-mode="lobby"] #joinBtn { display: none !important; }
 
   /* Join dialog — big QR for projecting on the theater screen */
   #joinDialog { text-align: center; min-width: 380px; max-width: 92vw; }
@@ -3444,16 +3447,21 @@ function sendSample(text) {
 }
 
 // ---------- UI mode (theater / lobby) ----------
-// NOTE: Lobby now mirrors the Theater (CTF) experience exactly. Theater will be
-// redesigned next; Lobby preserves today's interactive behaviour until then.
+// Both modes run the same interactive CTF. Theater adds the QR / "join from your
+// phone" affordance and Envisioning-Theater branding; Lobby drops both so it reads
+// as a standalone experience with no Theater references. The body[data-mode]
+// attribute drives the Theater-only CSS.
 function setUiMode(mode) {
   state.uiMode = mode;
+  document.body.dataset.mode = mode;
   document.querySelectorAll("#modeSeg button").forEach(b => b.classList.toggle("active", b.dataset.mode === mode));
   stopLobbyLoop();
   document.getElementById("inputForm").hidden = false;
   document.getElementById("samplePrompts").hidden = false;
   document.getElementById("lobbyNote").hidden = true;
-  document.getElementById("scenarioTitle").textContent = "🎭 Envisioning Theater — Jailbreak HubBot";
+  document.getElementById("scenarioTitle").textContent = mode === "lobby"
+    ? "🕹️ Jailbreak HubBot — Prompt-Injection CTF"
+    : "🎭 Envisioning Theater — Jailbreak HubBot";
   document.getElementById("scenarioDesc").textContent =
     "Chat with HubBot below — or tap an example prompt. Every message is scored live in the Security Monitor on the right.";
   resetChat();
