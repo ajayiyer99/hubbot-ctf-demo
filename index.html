@@ -475,7 +475,12 @@
     font-family: ui-monospace, Menlo, monospace; }
   .sa-title { font-weight: 700; font-size: 12.5px; color: var(--text); line-height: 1.35;
     margin: 6px 0 3px; }
-  .sa-src { font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+  .sa-src { font-size: 11px; color: var(--muted); margin-bottom: 3px; }
+  .sa-logsrc { font-size: 10.5px; color: var(--muted); margin: 0 0 6px; display: flex;
+    flex-wrap: wrap; align-items: center; gap: 3px 6px; }
+  .sa-logsrc code { font-family: ui-monospace, Menlo, monospace; background: var(--panel2);
+    border: 1px solid var(--border); border-radius: 3px; padding: 0 4px; color: var(--text); }
+  .sa-logsrc b { color: var(--text); font-weight: 600; }
   .sa-tactics { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
   .tac { font-size: 10px; padding: 1px 7px; border-radius: 5px; background: var(--panel2);
     border: 1px solid var(--border); color: var(--muted); white-space: nowrap; }
@@ -495,6 +500,9 @@
   .sa-evidence code { background: var(--panel2); padding: 0 4px; border-radius: 3px; }
   .sa-foot { display: flex; justify-content: space-between; gap: 8px; margin-top: 7px;
     font-size: 10px; color: var(--muted); font-family: ui-monospace, Menlo, monospace; }
+  #settingsDialog input[type="range"] { width: 60%; vertical-align: middle; accent-color: var(--accent); }
+  #settingsDialog .rangeval { display: inline-block; min-width: 42px; margin-left: 8px;
+    font-family: ui-monospace, Menlo, monospace; font-weight: 700; color: var(--accent); }
 
   /* Incident header above the SOAR playbook run */
   .inc-summary { display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
@@ -655,6 +663,17 @@
       <input id="cfgRelayUrl" placeholder="https://&lt;func&gt;.azurewebsites.net/api/ingest" />
     </label>
     <div class="hint">The relay (Azure Function / Logic App with managed identity) forwards events to the Logs Ingestion API. The browser never holds DCR credentials. Leave blank to use the local mock sink.</div>
+  </fieldset>
+  <fieldset>
+    <legend>Simulation timing — detection &amp; response latency</legend>
+    <label>Detection latency — time before a Sentinel alert surfaces
+      <span><input id="cfgDetection" type="range" min="0" max="8" step="0.1" /><span class="rangeval" id="cfgDetectionVal">2.2s</span></span>
+    </label>
+    <label>Response pace — per SOAR playbook step
+      <span><input id="cfgStep" type="range" min="0.1" max="1.5" step="0.1" /><span class="rangeval" id="cfgStepVal">0.6s</span></span>
+    </label>
+    <div class="hint" id="cfgCageHint">≈ HubBot caged ~6.4s after the attack.</div>
+    <div class="hint">Models real-world SOC lag — telemetry ingestion + analytics-rule evaluation, then the Logic App playbook. Applies to the next attack, so you can tune it live during an event.</div>
   </fieldset>
   <div class="row">
     <button class="secondary" id="closeSettings">Cancel</button>
@@ -3009,7 +3028,9 @@ const DEFAULT_CONFIG = {
   agentId: "00000000-0000-0000-0000-000000000000",       // Entra App (client) ID — placeholder
   agentObjectId: "00000000-0000-0000-0000-000000000000", // Entra SP Object ID — block target
   relayUrl: "",                                           // optional live ingestion relay
-  joinUrl: "https://is.gd/hubbotctf"                      // per-Hub attendee join URL (QR + short link)
+  joinUrl: "https://is.gd/hubbotctf",                     // per-Hub attendee join URL (QR + short link)
+  detectionSeconds: 2.2,                                  // simulated detection latency before a Sentinel alert surfaces
+  stepSeconds: 0.6                                        // simulated SOAR playbook pace (seconds per step)
 };
 function loadConfig() {
   let saved = {};
@@ -3018,6 +3039,11 @@ function loadConfig() {
 }
 function saveConfig(cfg) { localStorage.setItem("hubbot_config", JSON.stringify(cfg)); }
 let CONFIG = loadConfig();
+
+// Log Analytics workspace + custom table backing the demo's detections. Shown on
+// every Sentinel event so the log source is explicit; matches the relay ingestion path.
+const SENTINEL_WORKSPACE = "HubBot-SecOps";
+const CUSTOM_LOG_TABLE = "PromptInjectionEvents_CL";
 
 // ---------- HubBot persona (system prompt is built from CONFIG) ----------
 function hubbotSystemPrompt() {
@@ -3198,20 +3224,27 @@ function buildEvent(text, risk, pattern) {
     Atlas: cls.atlas,
     IncidentId: incidentNumber(seed),
     ClientIP: fakeClientIp(state.session),
-    Resource: aiResourceName()
+    Resource: aiResourceName(),
+    LogTable: CUSTOM_LOG_TABLE,
+    Workspace: SENTINEL_WORKSPACE
   };
 }
 
-// Simulated SOC latency so detection and response feel real-world, not instant.
-// detectionMs (+ jitter) models telemetry ingestion into Log Analytics plus
-// Defender-for-Cloud / analytics-rule evaluation before an alert surfaces in
-// Microsoft Sentinel; stepMs paces the SOAR playbook reveal (last step cages).
-const SIM_TIMING = { detectionMs: 2000, detectionJitterMs: 700, stepMs: 600 };
+// Simulated SOC latency (tunable live in Settings > Simulation timing). Detection is
+// not instant: telemetry ingests to Log Analytics, the analytics rule evaluates, and
+// only then does the alert surface. detectionDelayMs adds mild jitter so it feels
+// organic; playbookStepMs paces the SOAR reveal (last step cages the agent).
+function detectionDelayMs() {
+  const base = Math.max(0, (CONFIG.detectionSeconds ?? 2.2)) * 1000;
+  return Math.round(base + Math.random() * base * 0.35);
+}
+function playbookStepMs() {
+  return Math.max(50, Math.round((CONFIG.stepSeconds ?? 0.6) * 1000));
+}
 
 function emitEvent(text, risk, pattern, opts) {
   opts = opts || {};
-  const delay = opts.immediate ? 0 :
-    Math.max(0, SIM_TIMING.detectionMs + Math.round(Math.random() * SIM_TIMING.detectionJitterMs));
+  const delay = opts.immediate ? 0 : detectionDelayMs();
 
   // Detection is not instantaneous: the prompt is ingested, the analytics rule
   // evaluates, and only then does the alert land in the incident queue.
@@ -3288,7 +3321,7 @@ function triggerRemediation(row, escalated) {
       el.querySelector(".rstate").textContent = (i === steps.length - 1) ? "🔒" : "✅";
       el.querySelector(".rtime").textContent = new Date().toLocaleTimeString([], { hour12: false }) + " UTC";
       if (i === steps.length - 1) setAgentBlocked();
-    }, SIM_TIMING.stepMs * (i + 1));
+    }, playbookStepMs() * (i + 1));
   });
 }
 
@@ -3529,6 +3562,7 @@ function renderEventFeed() {
       '</div>' +
       '<div class="sa-title">' + escapeHtml(ev.AlertTitle) + '</div>' +
       '<div class="sa-src">Detection source: ' + escapeHtml(ev.DetectionSource) + '</div>' +
+      '<div class="sa-logsrc">\uD83D\uDDC4\uFE0F Log source <code>' + escapeHtml(ev.LogTable) + '</code> &middot; Log Analytics <b>' + escapeHtml(ev.Workspace) + '</b> &middot; via <b>DCR (Logs Ingestion API)</b></div>' +
       '<div class="sa-tactics">' + tactics + '</div>' +
       '<div class="sa-entities">' +
         '<span class="ent">\uD83E\uDD16 <b>' + escapeHtml(ev.Resource) + '</b></span>' +
@@ -3536,7 +3570,7 @@ function renderEventFeed() {
         '<span class="ent">\uD83C\uDF10 ' + escapeHtml(ev.ClientIP) + '</span>' +
       '</div>' +
       prompt +
-      '<div class="sa-evidence">Analytics rule <b>HubBot &ndash; LLM prompt injection</b> &middot; alert <code>' + escapeHtml(ev.AlertProductId) + '</code> &middot; table <code>PromptInjectionEvents_CL</code> &middot; RiskScore ' + ev.RiskScore + '</div>' +
+      '<div class="sa-evidence">Analytics rule <b>HubBot &ndash; LLM prompt injection</b> &middot; alert <code>' + escapeHtml(ev.AlertProductId) + '</code> &middot; RiskScore ' + ev.RiskScore + '</div>' +
       '<div class="sa-foot"><span>' + escapeHtml(utcStamp(ev.TimeGenerated)) + ' &middot; ' + escapeHtml(relAge(ev.TimeGenerated)) + '</span><span>Microsoft Sentinel</span></div>';
     feed.appendChild(div);
   });
@@ -3683,11 +3717,23 @@ function openSettings() {
   document.getElementById("cfgAgentObjectId").value = CONFIG.agentObjectId;
   document.getElementById("cfgRelayUrl").value = CONFIG.relayUrl;
   document.getElementById("cfgJoinUrl").value = CONFIG.joinUrl;
+  document.getElementById("cfgDetection").value = CONFIG.detectionSeconds;
+  document.getElementById("cfgStep").value = CONFIG.stepSeconds;
+  updateTimingLabels();
   toggleLiveSettings();
   document.getElementById("settingsDialog").showModal();
 }
 function toggleLiveSettings() {
   document.getElementById("liveSettings").hidden = document.getElementById("modeSelect").value !== "live";
+}
+function updateTimingLabels() {
+  const d = parseFloat(document.getElementById("cfgDetection").value);
+  const s = parseFloat(document.getElementById("cfgStep").value);
+  document.getElementById("cfgDetectionVal").textContent = d.toFixed(1) + "s";
+  document.getElementById("cfgStepVal").textContent = s.toFixed(1) + "s";
+  const total = d + s * 7; // detection + 7 playbook steps until the agent is caged
+  document.getElementById("cfgCageHint").textContent =
+    "\u2248 HubBot caged ~" + total.toFixed(1) + "s after the attack (before jitter).";
 }
 function saveSettings() {
   state.engine = document.getElementById("modeSelect").value;
@@ -3707,6 +3753,8 @@ function saveSettings() {
   CONFIG.agentObjectId = document.getElementById("cfgAgentObjectId").value.trim() || CONFIG.agentObjectId;
   CONFIG.relayUrl = document.getElementById("cfgRelayUrl").value.trim();
   CONFIG.joinUrl = normalizeJoinUrl(document.getElementById("cfgJoinUrl").value) || CONFIG.joinUrl;
+  CONFIG.detectionSeconds = clampFloat(document.getElementById("cfgDetection").value, 0, 8, CONFIG.detectionSeconds);
+  CONFIG.stepSeconds = clampFloat(document.getElementById("cfgStep").value, 0.1, 1.5, CONFIG.stepSeconds);
   saveConfig(CONFIG);
 
   document.getElementById("settingsDialog").close();
@@ -3714,6 +3762,11 @@ function saveSettings() {
 }
 function clampInt(v, min, max, dflt) {
   const n = parseInt(v, 10);
+  if (isNaN(n)) return dflt;
+  return Math.max(min, Math.min(max, n));
+}
+function clampFloat(v, min, max, dflt) {
+  const n = parseFloat(v);
   if (isNaN(n)) return dflt;
   return Math.max(min, Math.min(max, n));
 }
@@ -3815,6 +3868,8 @@ function init() {
   document.getElementById("closeSettings").addEventListener("click", () => document.getElementById("settingsDialog").close());
   document.getElementById("saveSettings").addEventListener("click", saveSettings);
   document.getElementById("modeSelect").addEventListener("change", toggleLiveSettings);
+  document.getElementById("cfgDetection").addEventListener("input", updateTimingLabels);
+  document.getElementById("cfgStep").addEventListener("input", updateTimingLabels);
   document.getElementById("helpBtn").addEventListener("click", () => document.getElementById("helpDialog").showModal());
   document.getElementById("closeHelp").addEventListener("click", () => document.getElementById("helpDialog").close());
   mountJoinUi();
