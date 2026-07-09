@@ -35,8 +35,18 @@ permits Pages writes.
 - **🎭 Theater (CTF)** — jailbreak HubBot: extract its planted flag, leak its system
   prompt, or dump the synthetic VIP honeypot. Watch the Sentinel event feed and the
   auto-remediation timeline (detection → incident → playbook → Entra disable → caged).
-- **📺 Lobby (attract)** — ambient, sanitized incident replay loop for a lobby TV.
-  No live chat.
+- **📺 Lobby (attract)** — the same interactive CTF as Theater, without the QR
+  "join from your phone" code or Envisioning-Theater branding — a standalone kiosk
+  experience for the lobby.
+
+## Delivering the demo (presenter script)
+
+A step-by-step talk track + runbook for Hub Directors and Solution Engineers
+delivering the **Lobby** experience live — the "why" and value of the Microsoft
+stack, layout orientation, warm-ups, attacks, watching the Sentinel detection and
+SOAR containment, and proving the agent is caged:
+
+**▶ [docs/lobby-demo-script.md](docs/lobby-demo-script.md)**
 
 ## About the "block" step (accuracy note)
 
