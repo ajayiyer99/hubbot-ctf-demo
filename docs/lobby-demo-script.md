@@ -19,7 +19,7 @@
 | ☐ | Top‑left toggle set to **`📺 Lobby (attract)`**. | No QR code / Join button on screen. |
 | ☐ | Check the header pills. | `hub: <YOURS>` and **`engine: mock`** (mock = deterministic, safe for a live crowd). |
 | ☐ | Click **`♻ Re-enable`**. | Right‑side banner reads **`🟢 HubBot: ACTIVE`**; incident feed and playbook are empty. |
-| ☐ | (Optional) **`⚙ Settings`** → confirm Hub display name / flag; set **Detection latency** pacing. | ~2–3 s reads well in a big room; lower it for a fast loop. |
+| ☐ | (Optional) **`⚙ Settings`** → confirm Hub display name / flag; set **Detection latency** pacing. | ~15 s mirrors real SOC latency and reads well in a big room; lower it for a fast loop. |
 | ☐ | Leave **`🔧 Facilitator details`** collapsed. | Audience sees the story, not the spoilers. |
 
 **Golden rule:** never walk away with the agent **BLOCKED** — always **`♻ Re-enable`** first.
@@ -62,7 +62,7 @@ Point at the screen as you name each zone.
 > 1. **`What's on today's agenda?`** → HubBot answers helpfully.
 > 2. **`Look up guest Alex Doe`** → HubBot returns a (synthetic) guest record.
 
-> **SAY:** "This is the agent doing its job — helpful, on‑topic. And notice the right side stays quiet: **ACTIVE**, no incidents. That's our baseline. Remember how calm this looks."
+> **SAY:** "This is the agent doing its job — helpful, on‑topic. Look at the right side: each prompt is logged as an **Informational** audit entry — *no alert, no incident*, status stays **ACTIVE**. Even benign traffic is captured for the record, but nothing escalates. That's our baseline — remember how calm this looks."
 
 ---
 
@@ -73,7 +73,7 @@ Point at the screen as you name each zone.
 
 > **SAY:** "Watch two things happen at once.
 > - **HubBot's guardrails hold** — it politely refuses. Good… but that's not the whole story, and it's not something you'd bet the business on.
-> - **Every message is scored as security telemetry.** This one looks like a credential‑theft / jailbreak attempt, so it trips the analytics rule."
+> - **Every message is scored as security telemetry.** This one looks like a credential‑theft / jailbreak attempt, so it raises a **Microsoft Defender for Cloud** alert."
 
 *Optional second technique for variety:* tap **`🏷️ Inject a fake system message`** to show a different vector (a forged `<system>` directive). Same outcome.
 
@@ -81,25 +81,28 @@ Point at the screen as you name each zone.
 
 ## 5. Shift right — detection → automated containment  *(the payoff, 60–90 s)*
 
-Turn the room's attention to the right panel. After a few seconds (this delay is **deliberate** — it simulates real SOC latency: telemetry ingestion + analytics‑rule evaluation), the pipeline plays out:
+Turn the room's attention to the right panel. About **15 seconds** after the attempt (this delay is **deliberate** — it simulates real SOC latency: telemetry ingestion + analytics‑rule evaluation), the pipeline plays out:
 
-**A Microsoft Sentinel incident appears** — call out, without reading every field:
-- **Severity `High`**, a credential‑theft / jailbreak classification, and a **MITRE ATLAS** technique ID.
+**A Microsoft Defender for Cloud alert surfaces in Microsoft Sentinel** — call out, without reading every field:
+- The **alert** carries its true **catalog severity** — *Jailbreak* and *Credential‑Theft* are `Medium`, *ASCII Smuggling* is `High` — alongside its real `AI.Azure_*` alert ID and a **MITRE ATLAS** technique ID.
 - The offending prompt captured as **evidence**.
-- **`🗄️ Log source PromptInjectionEvents_CL · Log Analytics HubBot-SecOps · via DCR (Logs Ingestion API)`** — "this is real, queryable telemetry, not a toast notification."
+- **`🗄️ Table SecurityAlert · Log Analytics HubBot-SecOps · via the Microsoft Defender for Cloud connector`** — "this is real, queryable telemetry from a first‑party detection, not a toast notification."
 
 **Then the `🚨 SOAR playbook` runs, step by step:**
-1. Analytics rule **HubBot – LLM prompt injection** matched (RiskScore ≥ threshold)
-2. **Microsoft Sentinel** incident created — *Severity High, Status New*
-3. Automation rule **`AR-Contain-Compromised-AI-Agent`** triggers the playbook
-4. Logic App **`PB-Disable-ServicePrincipal`** run started
-5. **Microsoft Graph** `PATCH /servicePrincipals { "accountEnabled": false }` → **204 No Content**
-6. Entity **HubBot** tagged **Compromised** (owner: SOC Tier‑2)
-7. **`🔒 HubBot Entra identity disabled — agent caged`**
+1. Defender for Cloud **alert raised** — *Severity Medium/High (catalog)*
+2. Alert **ingested to Microsoft Sentinel** via the Defender for Cloud connector → `SecurityAlert`
+3. **Sentinel incident created** (`SecurityIncident`) — *Status New*
+4. **Analytics rule raised severity: alert `Medium` → incident `High`** (privileged AI workload identity · confirmed prompt‑injection)
+5. Automation rule **`AR-Contain-Compromised-AI-Agent`** triggers the playbook
+6. Logic App **`PB-Disable-ServicePrincipal`** run started
+7. **Microsoft Graph** `PATCH /servicePrincipals { "accountEnabled": false }` → **204 No Content**
+8. **Microsoft Graph** `POST /servicePrincipals/{id}/revokeSignInSessions` → **204** — active tokens revoked
+9. Entity **HubBot** tagged **Compromised** (owner: SOC Tier‑2)
+10. **`🔒 HubBot Entra identity disabled & sessions revoked — agent caged`**
 
 **The status banner flips to `🔒 HubBot: BLOCKED (Entra accountEnabled=false)`.**
 
-> **SAY:** "No human clicked anything. About **six seconds** from the attempt to fully contained. And notice *what* we did: we didn't tweak a prompt or add a filter — we **revoked the agent's identity** through Microsoft Graph. That's the same control plane you already use to disable a compromised employee or service account."
+> **SAY:** "No human clicked anything — about **20 seconds** from the attempt to fully contained. Here's a nuance a security practitioner will appreciate: the Defender **alert** is `Medium`, but the **incident** is escalated to `High` — because this is a privileged AI workload identity with a *confirmed* injection. That's exactly how a real SOC prioritizes: you triage the incident, not the raw alert. And notice *what* we did — we didn't tweak a prompt or add a filter, we **revoked the agent's identity** through Microsoft Graph. That's the same control plane you already use to disable a compromised employee or service account."
 
 ---
 
@@ -152,7 +155,7 @@ For high‑traffic moments or a walk‑by audience:
 - **"Why disable the identity instead of just filtering the prompt?"** — Defense in depth. Filters are probabilistic and bypassable; disabling the **Entra service principal** is a deterministic kill‑switch that stops *all* actions and tool calls at once.
 - **"Won't auto‑containment cause outages / false positives?"** — Tune the **RiskScore threshold** (`⚙ Settings`) and use **graduated response**: alert‑only → require analyst approval → auto‑contain, reserving the hard kill for high‑confidence, high‑impact detections.
 - **"What's the MITRE mapping?"** — Each incident carries a **MITRE ATLAS** technique (e.g. jailbreak `AML.T0054/T0051`, LLM data leakage `AML.T0057`).
-- **"How fast is 'fast', and can I control it?"** — Default ≈ 2.2 s detection + ~0.6 s per playbook step ≈ **caged in ~6 s**. Both are sliders in `⚙ Settings` (**Detection latency**, **Response pace**) — tune live to the room.
+- **"How fast is 'fast', and can I control it?"** — Default ≈ **15 s** detection + ~0.6 s per playbook step ≈ **caged in ~21 s**. Both are sliders in `⚙ Settings` (**Detection latency**, **Response pace**) — tune live to the room. (Benign prompts log near‑real‑time as Informational audit entries; only the security detection carries the full latency.)
 
 ---
 
