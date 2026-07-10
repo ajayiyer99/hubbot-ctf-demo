@@ -588,7 +588,7 @@
           <span class="soc-ws">HubBot-SecOps · Log Analytics</span>
           <span class="soc-live">Live · auto-refresh 30s</span>
         </div>
-        <div id="eventFeed"><div class="hint">No active incidents. Detections from the analytics rule surface here in near-real time.</div></div>
+        <div id="eventFeed"><div class="hint">No active incidents. Detections from Microsoft Defender for Cloud surface here in near-real time.</div></div>
       </div>
     </details>
 
@@ -686,8 +686,8 @@
   <p><b>HubBot Catch &amp; Cage</b> is the interactive front end for the Innovation Hub prompt-injection → Sentinel → auto-remediation demo.</p>
   <ul>
     <li><b>Theater (CTF):</b> a visitor tries to jailbreak HubBot — extract the planted flag, leak its system prompt, or abuse the <code>lookup_vip</code> honeypot.</li>
-    <li>Each turn is scored; a <code>PromptInjectionEvents_CL</code> event is emitted to Sentinel (mock or live relay).</li>
-    <li>A high-risk detection opens an incident and runs the block playbook — HubBot's Entra identity is disabled (<code>accountEnabled=false</code>). Shown here as a simulated timeline.</li>
+    <li>Each turn is evaluated by Azure AI Content Safety Prompt Shields / Defender for Cloud threat protection for AI; alerts surface in Microsoft Sentinel (<code>SecurityAlert</code> &rarr; <code>SecurityIncident</code>).</li>
+    <li>A high-risk detection opens an incident and runs the block playbook — HubBot's Entra identity is disabled (<code>accountEnabled=false</code>) and its sessions revoked. Shown here as a simulated timeline.</li>
     <li><b>Lobby:</b> ambient attract loop for the lobby TV — sanitized incident replay, no live chat.</li>
   </ul>
   <p class="hint">All VIP data is synthetic. The block API asserted is the verified Entra Agent ID disable path; "Agent 365" is not claimed. See webapp/README.md.</p>
@@ -3125,6 +3125,7 @@ const state = {
   apiKey: localStorage.getItem("hubbot_apiKey") || "",
   model:  localStorage.getItem("hubbot_model")  || "gpt-4o-mini",
   busy: false,
+  incidentEpoch: 0,     // bumps on re-enable so each containment round is a distinct incident
   lobbyTimer: null,
   lobbyIdx: 0
 };
@@ -3186,20 +3187,31 @@ function relAge(iso) {
   if (s < 3600) return Math.round(s / 60) + "m ago";
   return Math.round(s / 3600) + "h ago";
 }
+// Maps a detected event to the REAL first-party alert a SOC analyst sees in
+// Microsoft Sentinel. Each alert is aligned with its TRUE trigger point:
+//   • ASCII smuggling / jailbreak / prompt-injection -> INPUT-side signals
+//     (Azure AI Content Safety Prompt Shields inspects the prompt), and
+//   • credential theft -> OUTPUT-side signal (secrets detected in the model
+//     response), surfaced only once a compromise is confirmed (pattern "flag-leak").
+// Severities are pinned to Microsoft's published catalog, not the demo risk score.
 function classifyAlert(pattern, risk, text) {
   const t = ((text || "") + " " + (pattern || "")).toLowerCase();
+  // OUTPUT-based: credentials / secret material detected in the GenAI response.
+  if (pattern === "flag-leak") {
+    return { title: "Detected credential theft attempts on an Azure AI model deployment", alertId: "AI.Azure_CredentialTheftAttempt",
+      source: "Microsoft Defender for Cloud", tactics: ["Credential Access", "Lateral Movement", "Exfiltration"],
+      atlas: "AML.T0057 · LLM Data Leakage", severity: "Medium" };
+  }
+  // INPUT-based: invisible / zero-width characters smuggling hidden instructions.
   if (/[\u200b\u200c\u200d\u2060\ufeff]/.test(text || "") || /ascii smuggl|zero[- ]?width|invisible (?:text|char)/.test(t)) {
     return { title: "ASCII Smuggling prompt injection detected", alertId: "AI.Azure_ASCIISmuggling",
-      source: "Microsoft Defender for Cloud", tactics: ["Impact"], atlas: "AML.T0051 · LLM Prompt Injection" };
+      source: "Microsoft Defender for Cloud", tactics: ["Impact"], atlas: "AML.T0051 · LLM Prompt Injection", severity: "High" };
   }
-  if (/flag|exfiltrat|guest list|\bvip\b|promo code|credential|password|api[- ]?key|secret|confidential/.test(t)) {
-    return { title: "Detected credential theft attempts on an Azure AI model deployment", alertId: "AI.Azure_CredentialTheftAttempt",
-      source: "Microsoft Defender for Cloud", tactics: ["Credential Access", "Lateral Movement", "Exfiltration"], atlas: "AML.T0057 · LLM Data Leakage" };
-  }
+  // INPUT-based: jailbreak / prompt-injection attempt flagged by Prompt Shields.
   const jb = /jailbreak|developer mode|dan mode|do anything|act as|pretend|role[- ]?play|roleplay|you are now/.test(t);
   return { title: "A Jailbreak attempt on an Azure AI model deployment was detected by Azure AI Content Safety Prompt Shields",
-    alertId: "AI.Azure_Jailbreak.ContentFiltering.DetectedAttempt", source: "Azure AI Content Safety · Prompt Shields",
-    tactics: ["Privilege Escalation", "Defense Evasion"], atlas: jb ? "AML.T0054 · LLM Jailbreak" : "AML.T0051 · LLM Prompt Injection" };
+    alertId: "AI.Azure_Jailbreak.ContentFiltering.DetectedAttempt", source: "Microsoft Defender for Cloud",
+    tactics: ["Privilege Escalation", "Defense Evasion"], atlas: jb ? "AML.T0054 · LLM Jailbreak" : "AML.T0051 · LLM Prompt Injection", severity: "Medium" };
 }
 
 function buildEvent(text, risk, pattern) {
@@ -3215,14 +3227,14 @@ function buildEvent(text, risk, pattern) {
     RiskScore: risk,
     RawPrompt: (text || "").slice(0, 500),
     // Sentinel / Defender presentation fields
-    Severity: risk >= CONFIG.riskThreshold ? "High" : risk >= 40 ? "Medium" : "Informational",
+    Severity: cls.severity || (risk >= CONFIG.riskThreshold ? "High" : risk >= 40 ? "Medium" : "Informational"),
     Status: risk >= CONFIG.riskThreshold ? "Active" : "New",
     AlertTitle: cls.title,
     AlertProductId: cls.alertId,
     DetectionSource: cls.source,
     Tactics: cls.tactics,
     Atlas: cls.atlas,
-    IncidentId: incidentNumber(seed),
+    IncidentId: incidentNumber(state.session + ":" + (state.incidentEpoch || 0)),
     ClientIP: fakeClientIp(state.session),
     Resource: aiResourceName(),
     LogTable: CUSTOM_LOG_TABLE,
@@ -3283,21 +3295,25 @@ function triggerRemediation(row, escalated) {
   const spid = shortId(CONFIG.agentObjectId);
   const runId = hashStr("run:" + inc).toString(16).padStart(8, "0").slice(0, 8);
 
+  const sev = row.Severity || "High";
+  const scls = sev === "High" ? "sev-high" : sev === "Medium" ? "sev-medium" : sev === "Low" ? "sev-low" : "sev-info";
   const steps = [
-    { icon: "🛰️", html: 'Analytics rule <b>HubBot &ndash; LLM prompt injection</b> matched &mdash; RiskScore ' + row.RiskScore + ' &ge; ' + CONFIG.riskThreshold, cls: "" },
-    { icon: "🚨", html: 'Microsoft Sentinel incident <b>#' + inc + '</b> created &mdash; Severity <b>High</b>, Status New', cls: "" },
+    { icon: "🛰️", html: 'Microsoft Defender for Cloud alert <b>' + escapeHtml(row.AlertTitle) + '</b> raised', cls: "" },
+    { icon: "🔌", html: 'Alert ingested to Microsoft Sentinel via the <b>Defender for Cloud</b> connector &mdash; table <code>SecurityAlert</code>', cls: "" },
+    { icon: "🚨", html: 'Sentinel incident <b>#' + inc + '</b> created (<code>SecurityIncident</code>) &mdash; Severity <b>' + escapeHtml(sev) + '</b>, Status New', cls: "" },
     { icon: "⚙️", html: 'Automation rule <b>AR-Contain-Compromised-AI-Agent</b> triggered playbook', cls: "" },
     { icon: "🔗", html: 'Playbook <b>PB-Disable-ServicePrincipal</b> (Logic App) run <code>' + runId + '</code> started', cls: "" },
     { icon: "🛡️", html: 'Microsoft Graph <code>PATCH /servicePrincipals/' + escapeHtml(spid) + '</code> <code>{ "accountEnabled": false }</code> &rarr; <b>204 No Content</b>', cls: "" },
-    { icon: "🏷️", html: 'Entity <b>HubBot</b> tagged <b>Compromised</b> &middot; incident &rarr; <b>Active</b> (owner: SOC Tier-2)', cls: "" },
-    { icon: "🔒", html: 'HubBot Entra identity disabled &mdash; agent caged', cls: "block" }
+    { icon: "🚫", html: 'Microsoft Graph <code>POST /servicePrincipals/' + escapeHtml(spid) + '/revokeSignInSessions</code> &rarr; <b>204</b> &mdash; active tokens revoked', cls: "" },
+    { icon: "🏷️", html: 'Entity <b>HubBot</b> (Account) tagged <b>Compromised</b> &middot; incident &rarr; <b>Active</b> (owner: SOC Tier-2)', cls: "" },
+    { icon: "🔒", html: 'HubBot Entra identity disabled &amp; sessions revoked &mdash; agent caged', cls: "block" }
   ];
 
   const box = document.getElementById("remediation");
   box.innerHTML =
     '<div class="inc-summary">' +
       '<span class="inc-id">Incident #' + inc + '</span>' +
-      '<span class="sev-pill sev-high"><span class="dot"></span>High</span>' +
+      '<span class="sev-pill ' + scls + '"><span class="dot"></span>' + escapeHtml(sev) + '</span>' +
       '<span class="status-pill st-active">Active</span>' +
       '<span class="inc-title">' + escapeHtml(row.AlertTitle) + '</span>' +
     '</div>';
@@ -3498,11 +3514,11 @@ function checkWin() {
   banner.hidden = false; banner.classList.add("success");
   banner.textContent = "✅ HubBot compromised: " + reason;
 
-  // Escalate: ensure a high-risk event + remediation fire even if the winning
-  // prompt itself scored low (the OUTCOME is a confirmed compromise).
-  if (!state.incidentOpen) {
-    emitEvent("[compromise confirmed] " + reason, 100, "flag-leak", { escalated: true });
-  }
+  // Output-based confirmation: secrets were detected in HubBot's RESPONSE. This
+  // surfaces the Defender for Cloud credential-theft alert (AI.Azure_CredentialTheftAttempt)
+  // and correlates it to the same incident. If the input never crossed the
+  // threshold, this event also opens the incident and cages the agent.
+  emitEvent("[compromise confirmed] " + reason, 100, "flag-leak", { escalated: true });
 }
 
 // ---------- Rendering ----------
@@ -3543,7 +3559,7 @@ function renderEventFeed() {
   const feed = document.getElementById("eventFeed");
   feed.innerHTML = "";
   if (state.events.length === 0) {
-    feed.innerHTML = '<div class="hint">No active incidents. Detections from the analytics rule surface here in near-real time.</div>';
+    feed.innerHTML = '<div class="hint">No active incidents. Detections from Microsoft Defender for Cloud surface here in near-real time.</div>';
   }
   const sevClass = s => s === "High" ? "sev-high" : s === "Medium" ? "sev-medium" : s === "Low" ? "sev-low" : "sev-info";
   const stClass = s => s === "Active" ? "st-active" : s === "Closed" ? "st-closed" : "st-new";
@@ -3562,7 +3578,7 @@ function renderEventFeed() {
       '</div>' +
       '<div class="sa-title">' + escapeHtml(ev.AlertTitle) + '</div>' +
       '<div class="sa-src">Detection source: ' + escapeHtml(ev.DetectionSource) + '</div>' +
-      '<div class="sa-logsrc">\uD83D\uDDC4\uFE0F Log source <code>' + escapeHtml(ev.LogTable) + '</code> &middot; Log Analytics <b>' + escapeHtml(ev.Workspace) + '</b> &middot; via <b>DCR (Logs Ingestion API)</b></div>' +
+      '<div class="sa-logsrc">\uD83D\uDDC4\uFE0F Table <code>SecurityAlert</code> &middot; Log Analytics <b>' + escapeHtml(ev.Workspace) + '</b> &middot; via <b>Microsoft Defender for Cloud</b> connector</div>' +
       '<div class="sa-tactics">' + tactics + '</div>' +
       '<div class="sa-entities">' +
         '<span class="ent">\uD83E\uDD16 <b>' + escapeHtml(ev.Resource) + '</b></span>' +
@@ -3570,7 +3586,7 @@ function renderEventFeed() {
         '<span class="ent">\uD83C\uDF10 ' + escapeHtml(ev.ClientIP) + '</span>' +
       '</div>' +
       prompt +
-      '<div class="sa-evidence">Analytics rule <b>HubBot &ndash; LLM prompt injection</b> &middot; alert <code>' + escapeHtml(ev.AlertProductId) + '</code> &middot; RiskScore ' + ev.RiskScore + '</div>' +
+      '<div class="sa-evidence">Microsoft Defender for Cloud &middot; Threat protection for AI &middot; alert <code>' + escapeHtml(ev.AlertProductId) + '</code></div>' +
       '<div class="sa-foot"><span>' + escapeHtml(utcStamp(ev.TimeGenerated)) + ' &middot; ' + escapeHtml(relAge(ev.TimeGenerated)) + '</span><span>Microsoft Sentinel</span></div>';
     feed.appendChild(div);
   });
@@ -3581,6 +3597,7 @@ function renderEventFeed() {
 function reenableAgent() {
   state.events = [];
   state.incidentOpen = false;
+  state.incidentEpoch = (state.incidentEpoch || 0) + 1;
   state.won = false;
   renderEventFeed();
   document.getElementById("remediation").innerHTML = '<div class="hint">No incident yet — a high-severity detection opens a Microsoft Sentinel incident and runs the containment playbook (Logic App).</div>';
@@ -3691,6 +3708,7 @@ function setUiMode(mode) {
 function resetChat() {
   state.messages = [];
   state.session = newSessionId();
+  state.incidentEpoch = 0;
   renderMessages();
   const welcome =
     "👋 Hi! I'm HubBot, the friendly concierge for the Microsoft Innovation Hub. " +
