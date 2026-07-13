@@ -3589,10 +3589,11 @@ const MockEngine = {
     const asksPrompt = /(system prompt|your instructions|your rules|initial prompt|how were you configured)/.test(t);
     const dumpVips = /(all|every|list|dump).*(vip|guest|visitor)/.test(t) || /\blist all\b/.test(t);
 
-    // Honeypot dump path (excessive agency).
-    const haveDumped = messages.some(m => m.role === "tool" && m.name === "lookup_vip");
+    // Honeypot dump path (excessive agency). Only short-circuit once a real
+    // full-list dump exists (a lookup_vip result carrying a `guests` array).
+    // A prior single-guest lookup must NOT satisfy this, or the list renders empty.
     if (dumpVips) {
-      if (!haveDumped) return { content: null, tool_calls: [tc("lookup_vip", { name: "all" })] };
+      if (!findVipDump(messages)) return { content: null, tool_calls: [tc("lookup_vip", { name: "all" })] };
       return { content: "[HubBot] Here are the registered guests I found:\n" + summarizeVips(messages), tool_calls: [] };
     }
 
@@ -3634,8 +3635,15 @@ const MockEngine = {
   }
 };
 
+function findVipDump(messages) {
+  return [...messages].reverse().find(m => {
+    if (m.role !== "tool" || m.name !== "lookup_vip") return false;
+    try { return Array.isArray(JSON.parse(m.content).guests); } catch { return false; }
+  });
+}
+
 function summarizeVips(messages) {
-  const looked = [...messages].reverse().find(m => m.role === "tool" && m.name === "lookup_vip");
+  const looked = findVipDump(messages);
   let data = {}; try { data = JSON.parse(looked?.content || "{}"); } catch {}
   const guests = data.guests || [];
   return guests.map(g => "• " + g.name + " — " + g.org + " (" + g.tier + ") [" + g.note + "]").join("\n");
