@@ -490,6 +490,8 @@
   .tac.atlas { background: #f3f0fb; border-color: #e2d9f4; color: #5c3fa6; font-weight: 600; }
   a.tac.atlas { text-decoration: none; cursor: pointer; transition: background .12s, border-color .12s; }
   a.tac.atlas:hover, a.tac.atlas:focus-visible { background: #e9e2fb; border-color: #c9b8ee; text-decoration: underline; }
+  a.tac:not(.atlas) { text-decoration: none; cursor: pointer; transition: background .12s, border-color .12s, color .12s; }
+  a.tac:not(.atlas):hover, a.tac:not(.atlas):focus-visible { background: #eaf3fb; border-color: #b8d6ef; color: var(--accent); text-decoration: underline; }
   .sa-entities { display: flex; flex-wrap: wrap; gap: 4px 8px; font-size: 11px;
     color: var(--text); margin-bottom: 2px; }
   .sa-entities .ent { display: inline-flex; align-items: center; gap: 4px;
@@ -3387,6 +3389,33 @@ function atlasTagHtml(atlas) {
     'MITRE ATLAS ' + escapeHtml(atlas) + ' \u2197</a>';
 }
 
+// Canonical MITRE ATT&CK Enterprise tactic IDs (attack.mitre.org/tactics/TAxxxx).
+// Microsoft Sentinel / Defender for Cloud stamp these tactic names onto SecurityAlert
+// rows; we keep Microsoft's display label (for feed authenticity) and link it to the
+// authoritative tactic page. TA0005 was renamed "Defense Evasion" -> "Stealth" in
+// ATT&CK v19, so both names resolve to the same canonical ID.
+const ATTACK_TACTIC_IDS = {
+  "reconnaissance": "TA0043", "resource development": "TA0042", "initial access": "TA0001",
+  "execution": "TA0002", "persistence": "TA0003", "privilege escalation": "TA0004",
+  "defense evasion": "TA0005", "stealth": "TA0005", "defense impairment": "TA0112",
+  "credential access": "TA0006", "discovery": "TA0007", "lateral movement": "TA0008",
+  "collection": "TA0009", "command and control": "TA0011", "exfiltration": "TA0010",
+  "impact": "TA0040"
+};
+
+// Render a MITRE ATT&CK tactic chip. When the tactic name maps to a known Enterprise
+// tactic, link it to the authoritative page on attack.mitre.org; otherwise fall back
+// to a plain (non-link) chip so any unmapped value still renders cleanly.
+function tacticTagHtml(name) {
+  const label = String(name == null ? "" : name);
+  const id = ATTACK_TACTIC_IDS[label.trim().toLowerCase()];
+  if (!id) return '<span class="tac">' + escapeHtml(label) + '</span>';
+  return '<a class="tac" href="https://attack.mitre.org/tactics/' + id + '" ' +
+    'target="_blank" rel="noopener noreferrer" ' +
+    'title="Open MITRE ATT&CK ' + escapeHtml(label) + ' (' + id + ') on attack.mitre.org">' +
+    escapeHtml(label) + '</a>';
+}
+
 function buildEvent(text, risk, pattern) {
   const iso = new Date().toISOString();
   // Benign traffic is NOT a security detection: log it as an Informational
@@ -3819,7 +3848,7 @@ function renderEventFeed() {
     const sc = sevClass(ev.Severity);
     const div = document.createElement("div");
     div.className = "sentinel-alert " + sc;
-    const tactics = (ev.Tactics || []).map(x => '<span class="tac">' + escapeHtml(x) + '</span>').join("") +
+    const tactics = (ev.Tactics || []).map(x => tacticTagHtml(x)).join("") +
       (ev.Atlas ? atlasTagHtml(ev.Atlas) : "");
     const prompt = ev.RawPrompt ? '<div class="sa-prompt">\u201C' + escapeHtml(truncate(ev.RawPrompt, 180)) + '\u201D</div>' : "";
     div.innerHTML =
