@@ -20,6 +20,7 @@
 | ☐ | Check the header pills. | `hub: <YOURS>` and **`engine: mock`** (mock = deterministic, safe for a live crowd). |
 | ☐ | Click **`♻ Re-enable`**. | Right‑side banner reads **`🟢 HubBot: ACTIVE`**; incident feed and playbook are empty. |
 | ☐ | (Optional) **`⚙ Settings`** → confirm Hub display name / flag; set **Detection latency** pacing. | ~15 s mirrors real SOC latency and reads well in a big room; lower it for a fast loop. |
+| ☐ | (Optional) **`⚙ Settings → Containment`** — decide if the **compute/model hard-stop** runs. | On by default (full four-layer cage). Turn off to show a graduated, approval-gated response. |
 | ☐ | Leave **`🔧 Facilitator details`** collapsed. | Audience sees the story, not the spoilers. |
 
 **Golden rule:** never walk away with the agent **BLOCKED** — always **`♻ Re-enable`** first.
@@ -35,7 +36,7 @@
 >
 > Guardrails — content filters, a well‑written system prompt — are necessary, but they're probabilistic, and attackers iterate until one gets through. So the real question isn't *'can we block every prompt?'* It's *'when one slips past, how fast can we contain the agent?'*
 >
-> That's what Microsoft's stack does here: **Azure AI Content Safety / Defender for AI** detect the attempt → the signal becomes security telemetry in **Log Analytics** → a **Microsoft Sentinel** analytics rule opens an incident → a **SOAR playbook (Logic App)** contains it by disabling the agent's **Entra** identity. Defense in depth: even if the model wobbles, the SOC cages the agent automatically."
+> That's what Microsoft's stack does here: **Azure AI Content Safety / Defender for AI** detect the attempt → the signal becomes security telemetry in **Log Analytics** → a **Microsoft Sentinel** analytics rule opens an incident → a **SOAR playbook (Logic App)** contains it by disabling the agent's **Entra** identity, **revoking its data access** (Azure RBAC + Key Vault) and **cutting its network paths** (WAF + Azure Firewall) — with an optional compute/model hard-stop. Defense in depth: even if the model wobbles, the SOC cages the agent automatically, on every layer it can reach."
 
 **Land the frame:** guardrails try to *stop* the attack; the SOC *assumes one gets through* and contains the agent.
 
@@ -88,21 +89,26 @@ Turn the room's attention to the right panel. About **15 seconds** after the att
 - The offending prompt captured as **evidence**.
 - **`🗄️ Table SecurityAlert · Log Analytics HubBot-SecOps · via the Microsoft Defender for Cloud connector`** — "this is real, queryable telemetry from a first‑party detection, not a toast notification."
 
-**Then the `🚨 SOAR playbook` runs, step by step:**
+**Then the `🚨 SOAR playbook` runs — first it correlates the alert into a prioritized incident:**
 1. Defender for Cloud **alert raised** — *Severity Medium/High (catalog)*
 2. Alert **ingested to Microsoft Sentinel** via the Defender for Cloud connector → `SecurityAlert`
 3. **Sentinel incident created** (`SecurityIncident`) — *Status New*
 4. **Analytics rule raised severity: alert `Medium` → incident `High`** (privileged AI workload identity · confirmed prompt‑injection)
 5. Automation rule **`AR-Contain-Compromised-AI-Agent`** triggers the playbook
-6. Logic App **`PB-Disable-ServicePrincipal`** run started
-7. **Microsoft Graph** `PATCH /servicePrincipals { "accountEnabled": false }` → **204 No Content**
-8. **Microsoft Graph** `POST /servicePrincipals/{id}/revokeSignInSessions` → **204** — active tokens revoked
-9. Entity **HubBot** tagged **Compromised** (owner: SOC Tier‑2)
-10. **`🔒 HubBot Entra identity disabled & sessions revoked — agent caged`**
+6. Logic App **`PB-Contain-Compromised-AI-Agent`** run started
+
+**Then it cages the agent across four control planes — the defense-in-depth story:**
+
+- **🛡️ Identity** *(the decisive cage)* — Microsoft Graph `PATCH /servicePrincipals { "accountEnabled": false }` → **204**, then `revokeSignInSessions` → active tokens revoked.
+- **🔑 Data** — Azure **RBAC** strips the agent role assignments (**Key Vault Secrets User**, **Storage Blob Data Contributor**) and **Key Vault** secrets are rotated → a leaked token reaches no data.
+- **🌐 Network** — **Front Door WAF** adds a **Block** rule for the attacker source IP (blocked at the edge); **Azure Firewall** denies egress from the agent subnet (C2 / exfil path cut).
+- **⏹️ Compute / Model** *(optional break-glass, last resort)* — the **App Service** host is stopped and **Azure OpenAI** keys regenerated with `disableLocalAuth=true`. Toggle this in **`⚙ Settings → Containment`**; leave it off to show a graduated response.
+
+Then: entity **HubBot** tagged **Compromised**, incident → **Active** (owner: SOC Tier-2), and **`🔒 HubBot contained — agent caged`**.
 
 **The status banner flips to `🔒 HubBot: BLOCKED (Entra accountEnabled=false)`.**
 
-> **SAY:** "No human clicked anything — about **20 seconds** from the attempt to fully contained. Here's a nuance a security practitioner will appreciate: the Defender **alert** is `Medium`, but the **incident** is escalated to `High` — because this is a privileged AI workload identity with a *confirmed* injection. That's exactly how a real SOC prioritizes: you triage the incident, not the raw alert. And notice *what* we did — we didn't tweak a prompt or add a filter, we **revoked the agent's identity** through Microsoft Graph. That's the same control plane you already use to disable a compromised employee or service account."
+> **SAY:** "No human clicked anything — about **25 seconds** from the attempt to fully contained. Here's a nuance a security practitioner will appreciate: the Defender **alert** is `Medium`, but the **incident** is escalated to `High` — because this is a privileged AI workload identity with a *confirmed* injection. That's exactly how a real SOC prioritizes: you triage the incident, not the raw alert. And notice *what* we did — not a tweak to a prompt or a filter. Look at *how many ways* we shut the agent down: we **revoked its identity** in Microsoft Graph (the same control plane you already use to disable a compromised employee or service account), **stripped its data access** in Azure RBAC and Key Vault, and **cut its network paths** at the WAF and Azure Firewall — with an optional host stop and model-key rotation. Identity, data, network, compute: that's defense in depth."
 
 ---
 
@@ -113,7 +119,7 @@ Turn the room's attention to the right panel. About **15 seconds** after the att
 > **SCREEN:** HubBot now replies:
 > `🔒 [system] HubBot is blocked (Entra accountEnabled=false). Click ♻ Re-enable agent to reset the demo.`
 
-> **SAY:** "This is the part that matters. Even a totally harmless request now fails. The agent is off at the **identity layer** — it can't do *anything*, good or bad, until a human deliberately brings it back. Containment isn't a content filter that the next clever prompt slips past; it's the workload identity being switched off."
+> **SAY:** "This is the part that matters. Even a totally harmless request now fails. The agent is off at the **identity layer** — its data access revoked and its network paths cut, so there's nothing left for it to reach — it can't do *anything*, good or bad, until a human deliberately brings it back. Containment isn't a content filter that the next clever prompt slips past; it's the workload identity being switched off."
 
 ---
 
@@ -129,7 +135,7 @@ Turn the room's attention to the right panel. About **15 seconds** after the att
 > **SAY:** "Three things to take with you:
 > 1. **Treat AI agents as workload identities** — give them least privilege, and be ready to disable them.
 > 2. **Instrument them** — every prompt is security telemetry flowing into Sentinel.
-> 3. **Automate containment** — SOAR disables the identity in seconds. That's defense in depth *beyond* the model's own guardrails.
+> 3. **Automate containment** — SOAR cages the agent across identity, data, and network in seconds. That's defense in depth *beyond* the model's own guardrails.
 >
 > Guardrails try to stop the attack. The SOC assumes one gets through — and cages the agent automatically. That's how you deploy AI agents with confidence."
 
@@ -152,10 +158,11 @@ For high‑traffic moments or a walk‑by audience:
 
 - **"Is this real or simulated?"** — The visuals simulate the Sentinel/SOAR pipeline so the demo is self‑contained and reliable in a lobby. The *same design* runs live: a relay ships prompt telemetry to a **Log Analytics custom table** (`PromptInjectionEvents_CL`), a real **Sentinel analytics rule** opens the incident, and a **Logic App** playbook disables the service principal. Open **`🔧 Facilitator details`** / **`❓ Help`** to show the wiring.
 - **"What actually detects the injection?"** — Azure AI **Content Safety Prompt Shields** / **Defender for AI** signals, scored into a RiskScore and shipped as telemetry; the analytics rule thresholds on that score.
-- **"Why disable the identity instead of just filtering the prompt?"** — Defense in depth. Filters are probabilistic and bypassable; disabling the **Entra service principal** is a deterministic kill‑switch that stops *all* actions and tool calls at once.
+- **"Why disable the identity instead of just filtering the prompt?"** — Defense in depth. Filters are probabilistic and bypassable; disabling the **Entra service principal** is a deterministic kill‑switch that stops *all* actions and tool calls at once — and the playbook backs it with **data** (Azure RBAC + Key Vault revoke), **network** (WAF source-IP block + Azure Firewall egress deny), and an optional **compute/model** hard-stop, so if any one layer is bypassed the others still hold.
 - **"Won't auto‑containment cause outages / false positives?"** — Tune the **RiskScore threshold** (`⚙ Settings`) and use **graduated response**: alert‑only → require analyst approval → auto‑contain, reserving the hard kill for high‑confidence, high‑impact detections.
+- **"Can I hold back the most aggressive actions?"** — Yes. The cage runs **identity + data + network** by default; the highest-blast-radius layer — the **compute/model hard-stop** (stop the App Service host + rotate the Azure OpenAI keys) — is a separate **`⚙ Settings → Containment`** toggle, so you can reserve the hard kill for a high-confidence break-glass a SOC would gate behind approval.
 - **"What's the MITRE mapping?"** — Each incident carries a **MITRE ATLAS** technique (e.g. jailbreak `AML.T0054/T0051`, LLM data leakage `AML.T0057`).
-- **"How fast is 'fast', and can I control it?"** — Default ≈ **15 s** detection + ~0.6 s per playbook step ≈ **caged in ~21 s**. Both are sliders in `⚙ Settings` (**Detection latency**, **Response pace**) — tune live to the room. (Benign prompts log near‑real‑time as Informational audit entries; only the security detection carries the full latency.)
+- **"How fast is 'fast', and can I control it?"** — Default ≈ **15 s** detection + ~0.6 s per playbook step ≈ **caged in ~23–25 s** — **14 steps** (identity + data + network) or **16** with the compute/model hard-stop. Both are sliders in `⚙ Settings` (**Detection latency**, **Response pace**) — tune live to the room. (Benign prompts log near‑real‑time as Informational audit entries; only the security detection carries the full latency.)
 
 ---
 
