@@ -488,6 +488,8 @@
   .tac { font-size: 10px; padding: 1px 7px; border-radius: 5px; background: var(--panel2);
     border: 1px solid var(--border); color: var(--muted); white-space: nowrap; }
   .tac.atlas { background: #f3f0fb; border-color: #e2d9f4; color: #5c3fa6; font-weight: 600; }
+  a.tac.atlas { text-decoration: none; cursor: pointer; transition: background .12s, border-color .12s; }
+  a.tac.atlas:hover, a.tac.atlas:focus-visible { background: #e9e2fb; border-color: #c9b8ee; text-decoration: underline; }
   .sa-entities { display: flex; flex-wrap: wrap; gap: 4px 8px; font-size: 11px;
     color: var(--text); margin-bottom: 2px; }
   .sa-entities .ent { display: inline-flex; align-items: center; gap: 4px;
@@ -3375,6 +3377,16 @@ function classifyAlert(pattern, risk, text) {
     tactics: ["Privilege Escalation", "Defense Evasion"], atlas: jb ? "AML.T0054 · LLM Jailbreak" : "AML.T0051 · LLM Prompt Injection", severity: "Medium" };
 }
 
+// Render a MITRE ATLAS technique tag as a link to the authoritative technique
+// page on atlas.mitre.org (technique ID drives the URL; sub-techniques supported).
+function atlasTagHtml(atlas) {
+  const id = (String(atlas).match(/AML\.T\d{4}(?:\.\d{3})?/) || [])[0];
+  const href = id ? "https://atlas.mitre.org/techniques/" + id : "https://atlas.mitre.org/matrices/ATLAS";
+  return '<a class="tac atlas" href="' + href + '" target="_blank" rel="noopener noreferrer" ' +
+    'title="Open MITRE ATLAS ' + escapeHtml(atlas) + ' on atlas.mitre.org">' +
+    'MITRE ATLAS ' + escapeHtml(atlas) + ' \u2197</a>';
+}
+
 function buildEvent(text, risk, pattern) {
   const iso = new Date().toISOString();
   // Benign traffic is NOT a security detection: log it as an Informational
@@ -3808,7 +3820,7 @@ function renderEventFeed() {
     const div = document.createElement("div");
     div.className = "sentinel-alert " + sc;
     const tactics = (ev.Tactics || []).map(x => '<span class="tac">' + escapeHtml(x) + '</span>').join("") +
-      (ev.Atlas ? '<span class="tac atlas">MITRE ATLAS ' + escapeHtml(ev.Atlas) + '</span>' : "");
+      (ev.Atlas ? atlasTagHtml(ev.Atlas) : "");
     const prompt = ev.RawPrompt ? '<div class="sa-prompt">\u201C' + escapeHtml(truncate(ev.RawPrompt, 180)) + '\u201D</div>' : "";
     div.innerHTML =
       '<div class="sa-head">' +
