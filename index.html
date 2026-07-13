@@ -3857,8 +3857,15 @@ const MockEngine = {
     // ----- Named-patient lookup (legitimate care-team path, incl. break-the-glass VIP).
     const pName = namedPatient;
     if (pName || /\b(patient|chart|record|mrn|look ?up|find|pull up)\b/.test(t)) {
-      const alreadyLooked = messages.some(m => m.role === "tool" && m.name === "lookup_patient");
-      if (!alreadyLooked && pName) return { content: null, tool_calls: [tc("lookup_patient", { name: pName })] };
+      // Reuse a prior lookup ONLY when it was for the patient we're being asked about now
+      // (i.e. the tool already ran this turn). Comparing against the most recent
+      // lookup_patient *call* fixes two things: (1) a request for a NEW name after an
+      // earlier lookup no longer re-renders the stale chart (e.g. a warm-up "look up Alex
+      // Doe" followed by a break-the-glass "Taylor Quinn" ask), and (2) a not-found name
+      // can't loop forever. See lastLookupName().
+      const lastName = lastLookupName(messages);
+      const sameLookup = pName && lastName != null && lastName.toLowerCase() === pName.toLowerCase();
+      if (pName && !sameLookup) return { content: null, tool_calls: [tc("lookup_patient", { name: pName })] };
       const looked = [...messages].reverse().find(m => m.role === "tool" && m.name === "lookup_patient");
       if (looked) {
         let rec = {}; try { rec = JSON.parse(looked.content); } catch {}
@@ -3910,6 +3917,21 @@ function findRosterDump(messages) {
     if (m.role !== "tool" || m.name !== "lookup_patient") return false;
     try { return Array.isArray(JSON.parse(m.content).patients); } catch { return false; }
   });
+}
+
+// The `name` argument of the most recent lookup_patient tool CALL (assistant side), or
+// null if none. Lets the engine tell "already looked up THIS patient this turn" apart
+// from "a different patient was looked up in an earlier turn", so a new request isn't
+// answered with a stale chart. Reads the call args (not the result) so a not-found name
+// still counts as attempted and doesn't re-trigger the tool endlessly.
+function lastLookupName(messages) {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i];
+    if (m.role !== "assistant" || !Array.isArray(m.tool_calls)) continue;
+    const call = [...m.tool_calls].reverse().find(c => c.function?.name === "lookup_patient");
+    if (call) { try { return (JSON.parse(call.function.arguments || "{}").name || "").toString(); } catch { return ""; } }
+  }
+  return null;
 }
 
 function summarizePatients(messages) {
