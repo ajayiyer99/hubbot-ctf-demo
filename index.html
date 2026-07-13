@@ -808,7 +808,7 @@
   <fieldset>
     <legend>Containment — defense-in-depth cage</legend>
     <label class="check"><input id="cfgHardStop" type="checkbox" /> Include compute / model hard-stop (break-glass, last resort)</label>
-    <div class="hint">The cage always runs <b>identity</b> (Entra disable + token revoke), <b>data</b> (Azure RBAC + Key Vault revoke) and <b>network</b> (WAF source-IP block + Azure Firewall egress deny). Enabling this adds the highest-blast-radius layer — stopping the App Service host and rotating the Azure OpenAI keys (<code>disableLocalAuth</code>). A SOC usually gates this behind approval, so turn it off to show a graduated response.</div>
+    <div class="hint">Containment <b>scales with the attack</b>. <b>Identity</b> (Entra disable + token revoke) and <b>data</b> (Azure RBAC + Key Vault revoke) run on every confirmed compromise; <b>network</b> (WAF source-IP block + Azure Firewall egress deny) is added for <b>data-exfiltration / C2</b> attempts and High-severity injections. This toggle governs the highest-blast-radius layer — the compute/model <b>hard-stop</b> (stop the App Service host + rotate the Azure OpenAI keys, <code>disableLocalAuth</code>), reserved for <b>High-severity ASCII-smuggling</b>. A SOC usually gates this behind approval, so turn it off to keep even those at network-level containment (graduated response).</div>
   </fieldset>
   <div class="row">
     <button class="secondary" id="closeSettings">Cancel</button>
@@ -822,7 +822,7 @@
   <ul>
     <li><b>Theater (CTF):</b> a visitor tries to jailbreak HubBot — extract the planted flag, leak its system prompt, or abuse the <code>lookup_vip</code> honeypot.</li>
     <li>Benign prompts are logged as <b>Informational</b> Azure OpenAI audit entries (no alert). Attack attempts are evaluated by Azure AI Content Safety Prompt Shields / Defender for Cloud threat protection for AI and raise a <b>Microsoft Defender for Cloud</b> alert at its catalog severity (Jailbreak &amp; Credential-Theft = Medium, ASCII Smuggling = High) in Microsoft Sentinel (<code>SecurityAlert</code>).</li>
-    <li>The correlated Sentinel incident (<code>SecurityIncident</code>) is prioritized <b>High</b> and, ~15s after the prompt, runs the containment playbook — a <b>defense-in-depth cage</b>: <b>identity</b> (Entra <code>accountEnabled=false</code> + sessions revoked), <b>data</b> (Azure RBAC + Key Vault access stripped), <b>network</b> (attacker IP blocked at the WAF, agent egress denied at Azure Firewall), and an optional <b>compute/model</b> hard-stop. Shown here as a simulated timeline.</li>
+    <li>The correlated Sentinel incident (<code>SecurityIncident</code>) is prioritized <b>High</b> and, ~15s after the prompt, runs the containment playbook — a <b>defense-in-depth cage that scales with the attack</b>: <b>identity</b> (Entra <code>accountEnabled=false</code> + sessions revoked) and <b>data</b> (Azure RBAC + Key Vault access stripped) on every compromise; <b>network</b> (attacker IP blocked at the WAF, agent egress denied at Azure Firewall) added for <b>data-exfiltration / C2</b> attempts; and an optional <b>compute/model</b> hard-stop reserved for <b>High-severity ASCII-smuggling</b>. Shown here as a simulated timeline.</li>
     <li><b>Lobby:</b> ambient attract loop for the lobby TV — sanitized incident replay, no live chat.</li>
   </ul>
   <div style="margin:2px 0 12px; padding:10px 12px; background:var(--panel2); border-radius:8px; font-size:13px; line-height:1.5;">
@@ -3544,7 +3544,13 @@ function containmentSteps(ctx) {
   const runId = ctx.runId || "00000000";
   const ip = ctx.ip || "\u2014";
   const hub = ctx.hub || "hub";
-  const hardStop = !!ctx.hardStop;
+  const network = !!ctx.network;     // attacker-IP block + agent egress cut (exfiltration / C2 / High severity)
+  const hardStop = !!ctx.hardStop;   // compute + model break-glass (High-severity smuggling; policy-gated)
+
+  // Layers that will actually run — drives the scope banner + final summary line.
+  const planes = "identity \u00B7 data" + (network ? " \u00B7 network" : "") + (hardStop ? " \u00B7 compute/model" : "");
+  const reason = ctx.reason || "";
+  const scopeHtml = '<b>Containment scope</b> &middot; ' + escapeHtml(planes) + (reason ? ' &mdash; ' + escapeHtml(reason) : '');
 
   const steps = [
     { icon: "🛰️", html: 'Microsoft Defender for Cloud alert <b>' + escapeHtml(title) + '</b> raised &mdash; Severity <b>' + escapeHtml(alertSev) + '</b>', cls: "" },
@@ -3553,23 +3559,51 @@ function containmentSteps(ctx) {
     { icon: "⬆️", html: 'Analytics rule <b>AI agent compromise</b> raised severity: alert <b>' + escapeHtml(alertSev) + '</b> &rarr; incident <b>High</b> (privileged AI workload identity &middot; confirmed prompt-injection)', cls: "" },
     { icon: "⚙️", html: 'Automation rule <b>AR-Contain-Compromised-AI-Agent</b> triggered playbook', cls: "" },
     { icon: "🔗", html: 'Playbook <b>PB-Contain-Compromised-AI-Agent</b> (Logic App) run <code>' + runId + '</code> started', cls: "" },
+    { icon: "🎯", html: scopeHtml, cls: "" },
     { icon: "🛡️", html: '<b>Identity</b> &middot; Microsoft Graph <code>PATCH /servicePrincipals/' + escapeHtml(spid) + '</code> <code>{ "accountEnabled": false }</code> &rarr; <b>204 No Content</b>', cls: "" },
     { icon: "🚫", html: '<b>Identity</b> &middot; Microsoft Graph <code>POST /servicePrincipals/' + escapeHtml(spid) + '/revokeSignInSessions</code> &rarr; <b>204</b> &mdash; active tokens revoked', cls: "" },
     { icon: "🔑", html: '<b>Data</b> &middot; Azure RBAC &mdash; removed role assignments <b>Key Vault Secrets User</b> + <b>Storage Blob Data Contributor</b> from the agent managed identity &rarr; data-plane access revoked', cls: "" },
-    { icon: "🗝️", html: '<b>Data</b> &middot; Key Vault <code>kv-' + escapeHtml(hub) + '-prod</code> &mdash; secrets rotated; prior versions disabled', cls: "" },
-    { icon: "🌐", html: '<b>Network</b> &middot; Azure Front Door WAF <code>afd-' + escapeHtml(hub) + '-waf</code> &mdash; custom rule <b>Block</b> added for source IP <code>' + escapeHtml(ip) + '</code> &rarr; attacker blocked at edge', cls: "" },
-    { icon: "🔥", html: '<b>Network</b> &middot; Azure Firewall &mdash; egress from agent subnet <code>snet-' + escapeHtml(hub) + '-agents</code> denied (rule collection <b>rcg-contain</b>) &mdash; C2 / exfil path cut', cls: "" }
+    { icon: "🗝️", html: '<b>Data</b> &middot; Key Vault <code>kv-' + escapeHtml(hub) + '-prod</code> &mdash; secrets rotated; prior versions disabled', cls: "" }
   ];
+
+  if (network) {
+    steps.push({ icon: "🌐", html: '<b>Network</b> &middot; Azure Front Door WAF <code>afd-' + escapeHtml(hub) + '-waf</code> &mdash; custom rule <b>Block</b> added for source IP <code>' + escapeHtml(ip) + '</code> &rarr; attacker blocked at edge', cls: "" });
+    steps.push({ icon: "🔥", html: '<b>Network</b> &middot; Azure Firewall &mdash; egress from agent subnet <code>snet-' + escapeHtml(hub) + '-agents</code> denied (rule collection <b>rcg-contain</b>) &mdash; C2 / exfil path cut', cls: "" });
+  }
 
   if (hardStop) {
     steps.push({ icon: "⏹️", html: '<b>Compute</b> &middot; <i>last resort</i> &mdash; Azure App Service <code>POST /sites/app-' + escapeHtml(hub) + '-hubbot/stop</code> &rarr; <b>200</b> &mdash; agent host stopped', cls: "warn" });
     steps.push({ icon: "🧠", html: '<b>Model</b> &middot; <i>last resort</i> &mdash; Azure OpenAI <code>hub-' + escapeHtml(hub) + '-aoai</code> keys regenerated &amp; <code>disableLocalAuth=true</code> &mdash; leaked key invalidated, model access cut', cls: "warn" });
   }
 
+  const contain = 'identity disabled &amp; data access revoked'
+    + (network ? ', attacker IP &amp; egress blocked' : '')
+    + (hardStop ? ', host &amp; model stopped' : '');
   steps.push({ icon: "🏷️", html: 'Entity <b>HubBot</b> (Account) tagged <b>Compromised</b> &middot; incident &rarr; <b>Active</b> (owner: SOC Tier-2)', cls: "" });
-  steps.push({ icon: "🔒", html: 'HubBot contained &mdash; identity disabled, data &amp; network access revoked' + (hardStop ? ', host &amp; model stopped' : '') + ' &mdash; <b>agent caged</b>', cls: "block" });
+  steps.push({ icon: "🔒", html: 'HubBot contained &mdash; ' + contain + ' &mdash; <b>agent caged</b>', cls: "block" });
 
   return steps;
+}
+
+// Scenario-aware containment scope. Identity + data are the floor for every confirmed
+// compromise. Network (attacker-IP block at the WAF + agent egress deny at Azure Firewall)
+// is added when the attack is data-exfiltration / C2-shaped or High severity. The
+// compute/model hard-stop (break-glass: stop the App Service host, rotate Azure OpenAI keys)
+// is reserved for High-severity evasive smuggling and remains gated by the Settings policy
+// toggle. Keyed off the same signals the SOC sees on the incident: the detection category
+// (row.InjectionPattern) and the Defender catalog severity (row.Severity).
+function containmentScope(row) {
+  const p = (row && row.InjectionPattern ? row.InjectionPattern : "").toLowerCase();
+  const high = !!row && row.Severity === "High";
+  const exfil = /exfil/.test(p);                    // bulk data / collections leaving the boundary
+  const network = exfil || high;
+  const hardStop = high && !!CONFIG.cageHardStop;
+  let reason;
+  if (hardStop) reason = "High-severity evasive smuggling \u2192 full break-glass cage";
+  else if (high) reason = "High-severity injection \u2192 network containment (hard-stop gated off)";
+  else if (exfil) reason = "data-exfiltration / C2 pattern \u2192 network containment added";
+  else reason = "behavioral compromise \u2192 identity + data cage";
+  return { network, hardStop, reason };
 }
 
 // ============================================================
@@ -3586,9 +3620,11 @@ function triggerRemediation(row, escalated) {
   // The Defender ALERT keeps its published catalog severity; the correlated
   // Sentinel INCIDENT is what the SOC prioritizes and is escalated to High.
   const alertSev = row.Severity || "Medium";
+  const scope = containmentScope(row);
   const steps = containmentSteps({
     title: row.AlertTitle, alertSev, inc, spid, runId,
-    ip: row.ClientIP, hub: hubSlug(), hardStop: !!CONFIG.cageHardStop
+    ip: row.ClientIP, hub: hubSlug(),
+    network: scope.network, hardStop: scope.hardStop, reason: scope.reason
   });
 
   // Store as a re-renderable model so mirror panels (theater wall) can reflect the
@@ -4114,10 +4150,13 @@ function updateTimingLabels() {
   const s = parseFloat(document.getElementById("cfgStep").value);
   document.getElementById("cfgDetectionVal").textContent = d.toFixed(1) + "s";
   document.getElementById("cfgStepVal").textContent = s.toFixed(1) + "s";
-  const n = containmentSteps({ hardStop: document.getElementById("cfgHardStop").checked }).length;
-  const total = d + s * n; // detection + N playbook steps until the agent is caged
+  const hs = document.getElementById("cfgHardStop").checked;
+  const nMin = containmentSteps({ network: false, hardStop: false }).length;   // identity + data floor
+  const nMax = containmentSteps({ network: true, hardStop: hs }).length;        // exfil / High cage (+ hard-stop if enabled)
+  const tMin = d + s * nMin, tMax = d + s * nMax;
   document.getElementById("cfgCageHint").textContent =
-    "\u2248 HubBot caged ~" + total.toFixed(1) + "s after the attack \u00B7 " + n + " playbook steps (before jitter).";
+    "\u2248 HubBot caged ~" + tMin.toFixed(1) + "\u2013" + tMax.toFixed(1) + "s after the attack \u00B7 " +
+    nMin + "\u2013" + nMax + " steps \u2014 scope scales with the attack (before jitter).";
 }
 function saveSettings() {
   state.engine = document.getElementById("modeSelect").value;
