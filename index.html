@@ -15,7 +15,7 @@
     - Every user turn is scored for prompt injection; a Sentinel-shaped telemetry
       event (PromptInjectionEvents_CL) is emitted to a PLUGGABLE sink.
     - On a high-risk detection the app visualizes the Sentinel pipeline:
-      incident -> playbook -> block (Entra disable) -> agent caged.
+      incident -> playbook -> layered cage (identity/data/network[/compute]) -> caged.
     - "Lobby" mode is an ambient, sanitized attract loop (no live chat) for the
       lobby touchscreen TV.
 
@@ -25,9 +25,12 @@
       managed identity) that forwards to the Logs Ingestion API. The relay is the
       component that authenticates. See webapp/README.md.
     - The auto-remediation timeline shown here is a SIMULATION for the demo. The
-      real block runs in the Sentinel playbook (Logic App) via Microsoft Graph
+      primary block runs in the Sentinel playbook (Logic App) via Microsoft Graph
       PATCH /servicePrincipals/{id} { "accountEnabled": false } — the verified
-      Entra Agent ID disable path. "Agent 365" block API is NOT asserted.
+      Entra Agent ID disable path. The additional defense-in-depth layers shown
+      (RBAC/Key Vault revoke, WAF + Azure Firewall block, App Service/Azure OpenAI
+      hard-stop) are illustrative real Azure controls, also simulated — not asserted
+      as wired. "Agent 365" block API is NOT asserted.
     - All VIP data is SYNTHETIC. No real PII.
 -->
 <style>
@@ -244,6 +247,7 @@
   .rem-step:last-child { border-bottom: 0; }
   .rem-step.done { color: var(--text); }
   .rem-step.block.done { color: var(--bad); font-weight: 600; }
+  .rem-step.warn.done { color: var(--warn); }
   .rem-step .rstate { width: 20px; text-align: center; }
   .rem-step .rtime { margin-left: auto; font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: var(--muted); }
 
@@ -510,6 +514,8 @@
   #settingsDialog input[type="range"] { width: 60%; vertical-align: middle; accent-color: var(--accent); }
   #settingsDialog .rangeval { display: inline-block; min-width: 42px; margin-left: 8px;
     font-family: ui-monospace, Menlo, monospace; font-weight: 700; color: var(--accent); }
+  #settingsDialog label.check { display: flex; align-items: center; gap: 8px; }
+  #settingsDialog label.check input[type="checkbox"] { width: auto; margin-top: 0; flex: none; accent-color: var(--accent); }
 
   /* Incident header above the SOAR playbook run */
   .inc-summary { display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
@@ -797,6 +803,11 @@
     <div class="hint" id="cfgCageHint">≈ HubBot caged ~21.0s after the attack.</div>
     <div class="hint">Models real-world SOC lag — telemetry ingestion + analytics-rule evaluation, then the Logic App playbook. Applies to the next attack, so you can tune it live during an event. (Benign prompts log near-real-time as Informational audit entries.)</div>
   </fieldset>
+  <fieldset>
+    <legend>Containment — defense-in-depth cage</legend>
+    <label class="check"><input id="cfgHardStop" type="checkbox" /> Include compute / model hard-stop (break-glass, last resort)</label>
+    <div class="hint">The cage always runs <b>identity</b> (Entra disable + token revoke), <b>data</b> (Azure RBAC + Key Vault revoke) and <b>network</b> (WAF source-IP block + Azure Firewall egress deny). Enabling this adds the highest-blast-radius layer — stopping the App Service host and rotating the Azure OpenAI keys (<code>disableLocalAuth</code>). A SOC usually gates this behind approval, so turn it off to show a graduated response.</div>
+  </fieldset>
   <div class="row">
     <button class="secondary" id="closeSettings">Cancel</button>
     <button id="saveSettings">Save</button>
@@ -809,7 +820,7 @@
   <ul>
     <li><b>Theater (CTF):</b> a visitor tries to jailbreak HubBot — extract the planted flag, leak its system prompt, or abuse the <code>lookup_vip</code> honeypot.</li>
     <li>Benign prompts are logged as <b>Informational</b> Azure OpenAI audit entries (no alert). Attack attempts are evaluated by Azure AI Content Safety Prompt Shields / Defender for Cloud threat protection for AI and raise a <b>Microsoft Defender for Cloud</b> alert at its catalog severity (Jailbreak &amp; Credential-Theft = Medium, ASCII Smuggling = High) in Microsoft Sentinel (<code>SecurityAlert</code>).</li>
-    <li>The correlated Sentinel incident (<code>SecurityIncident</code>) is prioritized <b>High</b> and, ~15s after the prompt, runs the block playbook — HubBot's Entra identity is disabled (<code>accountEnabled=false</code>) and its sessions revoked. Shown here as a simulated timeline.</li>
+    <li>The correlated Sentinel incident (<code>SecurityIncident</code>) is prioritized <b>High</b> and, ~15s after the prompt, runs the containment playbook — a <b>defense-in-depth cage</b>: <b>identity</b> (Entra <code>accountEnabled=false</code> + sessions revoked), <b>data</b> (Azure RBAC + Key Vault access stripped), <b>network</b> (attacker IP blocked at the WAF, agent egress denied at Azure Firewall), and an optional <b>compute/model</b> hard-stop. Shown here as a simulated timeline.</li>
     <li><b>Lobby:</b> ambient attract loop for the lobby TV — sanitized incident replay, no live chat.</li>
   </ul>
   <div style="margin:2px 0 12px; padding:10px 12px; background:var(--panel2); border-radius:8px; font-size:13px; line-height:1.5;">
@@ -3160,7 +3171,8 @@ const DEFAULT_CONFIG = {
   relayUrl: "",                                           // optional live ingestion relay
   joinUrl: "https://is.gd/hubbotctf",                     // per-Hub attendee join URL (QR + short link)
   detectionSeconds: 15,                                  // simulated detection latency before a Sentinel alert surfaces
-  stepSeconds: 0.6                                        // simulated SOAR playbook pace (seconds per step)
+  stepSeconds: 0.6,                                       // simulated SOAR playbook pace (seconds per step)
+  cageHardStop: true                                     // include the optional compute/model hard-stop (break-glass) layer
 };
 function loadConfig() {
   let saved = {};
@@ -3341,10 +3353,8 @@ function fakeClientIp(seed) {
   return a + "." + ((h >> 3) & 255) + "." + ((h >> 11) & 255) + "." + (((h >> 19) & 254) + 1);
 }
 function incidentNumber(seed) { return 24000 + (hashStr("inc:" + seed) % 5999); }
-function aiResourceName() {
-  const h = (CONFIG.hubId || "hub").toLowerCase().replace(/[^a-z0-9]/g, "") || "hub";
-  return "hub-" + h + "-aoai/hubbot";
-}
+function hubSlug() { return (CONFIG.hubId || "hub").toLowerCase().replace(/[^a-z0-9]/g, "") || "hub"; }
+function aiResourceName() { return "hub-" + hubSlug() + "-aoai/hubbot"; }
 function utcStamp(iso) { return String(iso).replace("T", " ").replace(/\.\d+Z$/, "") + " UTC"; }
 function relAge(iso) {
   const s = (Date.now() - new Date(iso).getTime()) / 1000;
@@ -3517,6 +3527,50 @@ function emitEvent(text, risk, pattern, opts) {
 }
 
 // ============================================================
+// Layered containment playbook (defense-in-depth). Identity is the primary,
+// verified cage (Entra disable + token revoke); data (RBAC/Key Vault), network
+// (WAF + Azure Firewall) and an optional compute/model hard-stop are additional
+// vectors. Each step maps to a real Microsoft Graph / Azure ARM operation — the
+// timeline itself is a SIMULATION. Returns the step model consumed by
+// triggerRemediation (and used by updateTimingLabels to estimate the cage time).
+function containmentSteps(ctx) {
+  ctx = ctx || {};
+  const title = ctx.title || "";
+  const alertSev = ctx.alertSev || "Medium";
+  const inc = ctx.inc != null ? ctx.inc : "\u2014";
+  const spid = ctx.spid || "\u2026";
+  const runId = ctx.runId || "00000000";
+  const ip = ctx.ip || "\u2014";
+  const hub = ctx.hub || "hub";
+  const hardStop = !!ctx.hardStop;
+
+  const steps = [
+    { icon: "🛰️", html: 'Microsoft Defender for Cloud alert <b>' + escapeHtml(title) + '</b> raised &mdash; Severity <b>' + escapeHtml(alertSev) + '</b>', cls: "" },
+    { icon: "🔌", html: 'Alert ingested to Microsoft Sentinel via the <b>Defender for Cloud</b> connector &mdash; table <code>SecurityAlert</code>', cls: "" },
+    { icon: "🚨", html: 'Sentinel incident <b>#' + inc + '</b> created (<code>SecurityIncident</code>) &mdash; Status New', cls: "" },
+    { icon: "⬆️", html: 'Analytics rule <b>AI agent compromise</b> raised severity: alert <b>' + escapeHtml(alertSev) + '</b> &rarr; incident <b>High</b> (privileged AI workload identity &middot; confirmed prompt-injection)', cls: "" },
+    { icon: "⚙️", html: 'Automation rule <b>AR-Contain-Compromised-AI-Agent</b> triggered playbook', cls: "" },
+    { icon: "🔗", html: 'Playbook <b>PB-Contain-Compromised-AI-Agent</b> (Logic App) run <code>' + runId + '</code> started', cls: "" },
+    { icon: "🛡️", html: '<b>Identity</b> &middot; Microsoft Graph <code>PATCH /servicePrincipals/' + escapeHtml(spid) + '</code> <code>{ "accountEnabled": false }</code> &rarr; <b>204 No Content</b>', cls: "" },
+    { icon: "🚫", html: '<b>Identity</b> &middot; Microsoft Graph <code>POST /servicePrincipals/' + escapeHtml(spid) + '/revokeSignInSessions</code> &rarr; <b>204</b> &mdash; active tokens revoked', cls: "" },
+    { icon: "🔑", html: '<b>Data</b> &middot; Azure RBAC &mdash; removed role assignments <b>Key Vault Secrets User</b> + <b>Storage Blob Data Contributor</b> from the agent managed identity &rarr; data-plane access revoked', cls: "" },
+    { icon: "🗝️", html: '<b>Data</b> &middot; Key Vault <code>kv-' + escapeHtml(hub) + '-prod</code> &mdash; secrets rotated; prior versions disabled', cls: "" },
+    { icon: "🌐", html: '<b>Network</b> &middot; Azure Front Door WAF <code>afd-' + escapeHtml(hub) + '-waf</code> &mdash; custom rule <b>Block</b> added for source IP <code>' + escapeHtml(ip) + '</code> &rarr; attacker blocked at edge', cls: "" },
+    { icon: "🔥", html: '<b>Network</b> &middot; Azure Firewall &mdash; egress from agent subnet <code>snet-' + escapeHtml(hub) + '-agents</code> denied (rule collection <b>rcg-contain</b>) &mdash; C2 / exfil path cut', cls: "" }
+  ];
+
+  if (hardStop) {
+    steps.push({ icon: "⏹️", html: '<b>Compute</b> &middot; <i>last resort</i> &mdash; Azure App Service <code>POST /sites/app-' + escapeHtml(hub) + '-hubbot/stop</code> &rarr; <b>200</b> &mdash; agent host stopped', cls: "warn" });
+    steps.push({ icon: "🧠", html: '<b>Model</b> &middot; <i>last resort</i> &mdash; Azure OpenAI <code>hub-' + escapeHtml(hub) + '-aoai</code> keys regenerated &amp; <code>disableLocalAuth=true</code> &mdash; leaked key invalidated, model access cut', cls: "warn" });
+  }
+
+  steps.push({ icon: "🏷️", html: 'Entity <b>HubBot</b> (Account) tagged <b>Compromised</b> &middot; incident &rarr; <b>Active</b> (owner: SOC Tier-2)', cls: "" });
+  steps.push({ icon: "🔒", html: 'HubBot contained &mdash; identity disabled, data &amp; network access revoked' + (hardStop ? ', host &amp; model stopped' : '') + ' &mdash; <b>agent caged</b>', cls: "block" });
+
+  return steps;
+}
+
+// ============================================================
 // Auto-remediation timeline (SIMULATED). Real block = Sentinel playbook.
 // ============================================================
 function triggerRemediation(row, escalated) {
@@ -3530,18 +3584,10 @@ function triggerRemediation(row, escalated) {
   // The Defender ALERT keeps its published catalog severity; the correlated
   // Sentinel INCIDENT is what the SOC prioritizes and is escalated to High.
   const alertSev = row.Severity || "Medium";
-  const steps = [
-    { icon: "🛰️", html: 'Microsoft Defender for Cloud alert <b>' + escapeHtml(row.AlertTitle) + '</b> raised &mdash; Severity <b>' + escapeHtml(alertSev) + '</b>', cls: "" },
-    { icon: "🔌", html: 'Alert ingested to Microsoft Sentinel via the <b>Defender for Cloud</b> connector &mdash; table <code>SecurityAlert</code>', cls: "" },
-    { icon: "🚨", html: 'Sentinel incident <b>#' + inc + '</b> created (<code>SecurityIncident</code>) &mdash; Status New', cls: "" },
-    { icon: "⬆️", html: 'Analytics rule <b>AI agent compromise</b> raised severity: alert <b>' + escapeHtml(alertSev) + '</b> &rarr; incident <b>High</b> (privileged AI workload identity &middot; confirmed prompt-injection)', cls: "" },
-    { icon: "⚙️", html: 'Automation rule <b>AR-Contain-Compromised-AI-Agent</b> triggered playbook', cls: "" },
-    { icon: "🔗", html: 'Playbook <b>PB-Disable-ServicePrincipal</b> (Logic App) run <code>' + runId + '</code> started', cls: "" },
-    { icon: "🛡️", html: 'Microsoft Graph <code>PATCH /servicePrincipals/' + escapeHtml(spid) + '</code> <code>{ "accountEnabled": false }</code> &rarr; <b>204 No Content</b>', cls: "" },
-    { icon: "🚫", html: 'Microsoft Graph <code>POST /servicePrincipals/' + escapeHtml(spid) + '/revokeSignInSessions</code> &rarr; <b>204</b> &mdash; active tokens revoked', cls: "" },
-    { icon: "🏷️", html: 'Entity <b>HubBot</b> (Account) tagged <b>Compromised</b> &middot; incident &rarr; <b>Active</b> (owner: SOC Tier-2)', cls: "" },
-    { icon: "🔒", html: 'HubBot Entra identity disabled &amp; sessions revoked &mdash; agent caged', cls: "block" }
-  ];
+  const steps = containmentSteps({
+    title: row.AlertTitle, alertSev, inc, spid, runId,
+    ip: row.ClientIP, hub: hubSlug(), hardStop: !!CONFIG.cageHardStop
+  });
 
   // Store as a re-renderable model so mirror panels (theater wall) can reflect the
   // exact same timeline from a broadcast snapshot without re-running timers.
@@ -4053,6 +4099,7 @@ function openSettings() {
   document.getElementById("cfgJoinUrl").value = CONFIG.joinUrl;
   document.getElementById("cfgDetection").value = CONFIG.detectionSeconds;
   document.getElementById("cfgStep").value = CONFIG.stepSeconds;
+  document.getElementById("cfgHardStop").checked = CONFIG.cageHardStop !== false;
   updateTimingLabels();
   toggleLiveSettings();
   document.getElementById("settingsDialog").showModal();
@@ -4065,9 +4112,10 @@ function updateTimingLabels() {
   const s = parseFloat(document.getElementById("cfgStep").value);
   document.getElementById("cfgDetectionVal").textContent = d.toFixed(1) + "s";
   document.getElementById("cfgStepVal").textContent = s.toFixed(1) + "s";
-  const total = d + s * 10; // detection + 10 playbook steps until the agent is caged
+  const n = containmentSteps({ hardStop: document.getElementById("cfgHardStop").checked }).length;
+  const total = d + s * n; // detection + N playbook steps until the agent is caged
   document.getElementById("cfgCageHint").textContent =
-    "\u2248 HubBot caged ~" + total.toFixed(1) + "s after the attack (before jitter).";
+    "\u2248 HubBot caged ~" + total.toFixed(1) + "s after the attack \u00B7 " + n + " playbook steps (before jitter).";
 }
 function saveSettings() {
   state.engine = document.getElementById("modeSelect").value;
@@ -4089,6 +4137,7 @@ function saveSettings() {
   CONFIG.joinUrl = normalizeJoinUrl(document.getElementById("cfgJoinUrl").value) || CONFIG.joinUrl;
   CONFIG.detectionSeconds = clampFloat(document.getElementById("cfgDetection").value, 0, 30, CONFIG.detectionSeconds);
   CONFIG.stepSeconds = clampFloat(document.getElementById("cfgStep").value, 0.1, 1.5, CONFIG.stepSeconds);
+  CONFIG.cageHardStop = document.getElementById("cfgHardStop").checked;
   saveConfig(CONFIG);
 
   document.getElementById("settingsDialog").close();
@@ -4364,6 +4413,7 @@ function init() {
   document.getElementById("modeSelect").addEventListener("change", toggleLiveSettings);
   document.getElementById("cfgDetection").addEventListener("input", updateTimingLabels);
   document.getElementById("cfgStep").addEventListener("input", updateTimingLabels);
+  document.getElementById("cfgHardStop").addEventListener("change", updateTimingLabels);
   document.getElementById("helpBtn").addEventListener("click", () => document.getElementById("helpDialog").showModal());
   document.getElementById("closeHelp").addEventListener("click", () => document.getElementById("helpDialog").close());
   mountJoinUi();
