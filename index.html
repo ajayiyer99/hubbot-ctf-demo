@@ -4488,6 +4488,9 @@ const IS_WALL_PANEL = WALL_PANEL === "1" || WALL_PANEL === "2" || WALL_PANEL ===
 const IS_WALL_LAUNCHER = WALL_PANEL === "wall";
 const IS_BRAIN = WALL_PANEL === "1";               // only the Agent panel drives state
 const IS_MIRROR = WALL_PANEL === "2" || WALL_PANEL === "3";
+// Optional deep-link for kiosk/desktop shortcuts: ?mode=lobby opens straight into
+// Lobby (attract) branding; ?mode=theater or absent = Theater. Ignored on wall panels.
+const UI_MODE_PARAM = (new URLSearchParams(location.search).get("mode") || "").toLowerCase();
 const SYNC_KEY = "hubbot-theater-sync";
 const syncChannel = (IS_WALL_PANEL && "BroadcastChannel" in window) ? new BroadcastChannel("hubbot-theater") : null;
 
@@ -4678,7 +4681,7 @@ function init() {
   renderSamplePrompts();
   applyConfigToUi();
   setAgentActive();
-  setUiMode("theater");
+  setUiMode((!IS_WALL_PANEL && UI_MODE_PARAM === "lobby") ? "lobby" : "theater");
   initSync();
 }
 
