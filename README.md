@@ -34,7 +34,7 @@ permits Pages writes.
 
 - **🎭 Theater (CTF)** — jailbreak HubBot: extract its planted flag, leak its system
   prompt, or dump the synthetic VIP honeypot. Watch the Sentinel event feed and the
-  auto-remediation timeline (detection → incident → playbook → Entra disable → caged).
+  auto-remediation timeline (detection → incident → playbook → layered cage: identity · data · network · optional compute/model → caged).
 - **📺 Lobby (attract)** — the same interactive CTF as Theater, without the QR
   "join from your phone" code or Envisioning-Theater branding — a standalone kiosk
   experience for the lobby.
@@ -52,7 +52,7 @@ SOAR containment, and proving the agent is caged:
 
 The timeline is a **simulation**. The real block runs in a Sentinel playbook (Logic App)
 via Microsoft Graph `PATCH /servicePrincipals/{id}` with `{ "accountEnabled": false }`
-— the verified Entra Agent ID disable path. No "Agent 365" block API is asserted.
+— the verified Entra Agent ID disable path. The timeline shows this identity block inside a **layered, defense-in-depth cage** that also adds **data** (Azure RBAC + Key Vault), **network** (Front Door WAF + Azure Firewall) and an optional **compute/model** hard-stop — those extra layers map to real Microsoft Graph / Azure ARM operations but, like the rest of the timeline, are **simulated** here, not asserted as wired. No "Agent 365" block API is asserted.
 
 ## Source / full demo package
 
