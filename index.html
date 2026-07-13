@@ -408,9 +408,10 @@
     cursor: pointer; color: var(--accent); background: #f2f8fe;
     border: 1px solid var(--border); border-radius: 20px; padding: 4px 12px; }
   .join-enlarge:hover { border-color: var(--accent); }
-  /* The QR / "join from your phone" affordance is Theater-only. */
+  /* The QR join and the 3-screen wall setup are Theater-only affordances. */
   body[data-mode="lobby"] #joinCard,
-  body[data-mode="lobby"] #joinBtn { display: none !important; }
+  body[data-mode="lobby"] #joinBtn,
+  body[data-mode="lobby"] #wallBtn { display: none !important; }
 
   /* Join dialog — big QR for projecting on the theater screen */
   #joinDialog { text-align: center; min-width: 380px; max-width: 92vw; }
@@ -651,6 +652,7 @@
   <span class="mode-pill" id="hubPill"></span>
   <span class="mode-pill" id="enginePill">engine: mock</span>
   <div class="facilitator-controls">
+    <button id="wallBtn" class="ghost" title="Open the 3-screen Theater wall setup (48′×9′ · three 16:9 tiles)">🖥️ Wall · 3-screen</button>
     <button id="joinBtn" class="ghost" title="Show the QR code &amp; short link so attendees can join from their phones">📱 Join</button>
     <button id="resetBtn" class="ghost" title="Reset conversation">↻ Reset</button>
     <button id="reenableBtn" class="ghost" title="Clear events and re-enable the agent (mirrors reset-reenable.ps1)">♻ Re-enable</button>
@@ -4405,6 +4407,9 @@ function init() {
   if (IS_WALL_LAUNCHER) { renderWallLauncher(); return; }
   applyWallMode();
   document.querySelectorAll("#modeSeg button").forEach(b => b.addEventListener("click", () => setUiMode(b.dataset.mode)));
+  document.getElementById("wallBtn").addEventListener("click", () => {
+    window.open(location.origin + location.pathname + "?panel=wall", "hubbot-wall-launcher");
+  });
   document.getElementById("resetBtn").addEventListener("click", resetChat);
   document.getElementById("reenableBtn").addEventListener("click", reenableAgent);
   document.getElementById("settingsBtn").addEventListener("click", openSettings);
