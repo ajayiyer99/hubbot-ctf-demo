@@ -517,6 +517,111 @@
   .rem-step .rlabel code { background: var(--panel2); padding: 0 4px; border-radius: 3px;
     font-size: 11px; font-family: ui-monospace, Menlo, monospace; }
   .rem-step .rlabel b { color: inherit; }
+
+  /* =====================================================================
+     THEATER WALL — 3-panel deep-link (?panel=1|2|3) for an ultra-wide
+     48′×9′ (5.33:1) wall = three 16:9 tiles driven by ONE media-player PC
+     (3 browser windows). Each window renders ONE panel, theater-legible.
+     The normal app (no ?panel) never gets .wall, so it is unaffected.
+     ===================================================================== */
+  body.wall header { display: none; }
+  body.wall #brandBar { padding: 12px 26px; }
+  body.wall #brandBar .course-sub { font-weight: 700; }
+  body.wall { font-size: clamp(16px, 1.35vw, 30px); }
+  body.wall main { grid-template-columns: 1fr; grid-template-rows: 1fr; overflow: hidden; }
+  body.wall #chatPanel { display: none; }
+  body.wall #inspector { display: none; }
+  body.wall #facilitatorSection { display: none !important; }   /* no spoilers on the public wall */
+
+  /* ---- Panel 1 · Agent (interactive brain) ---- */
+  body.wall[data-panel="1"] #chatPanel { display: flex; }
+  body.wall[data-panel="1"] #inspector {
+    display: block; position: fixed; inset: auto; width: 0; height: 0;
+    overflow: visible; background: transparent; box-shadow: none; border: none; padding: 0; }
+  body.wall[data-panel="1"] #inspector > * { display: none; }
+  body.wall[data-panel="1"] #inspector > #joinCard {
+    display: flex; position: fixed; right: 28px; top: 92px; bottom: auto;
+    width: min(30vw, 400px); margin: 0; z-index: 50;
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 14px; padding: 14px 16px; box-shadow: var(--shadow); }
+  body.wall[data-panel="1"] #inspector > #joinCard .join-qr {
+    width: 118px; height: 118px; flex-basis: 118px; }
+  body.wall[data-panel="1"] #scenarioBar h2 { font-size: 1.25em; }
+  body.wall[data-panel="1"] #scenarioBar p { font-size: .82em; }
+  body.wall[data-panel="1"] .msg { max-width: 88%; font-size: 1.02em; }
+  body.wall[data-panel="1"] .sp-chip { font-size: .9em; padding: 9px 16px; }
+  body.wall[data-panel="1"] #inputForm textarea { font-size: 1em; }
+
+  /* ---- Panels 2 & 3 fill the inspector column full-bleed ---- */
+  body.wall[data-panel="2"] #inspector,
+  body.wall[data-panel="3"] #inspector {
+    display: block; height: 100%; overflow-y: auto; padding: 18px 22px; }
+  body.wall #inspector .section { border: 1px solid var(--border); border-radius: 14px;
+    margin-bottom: 16px; overflow: hidden; box-shadow: var(--shadow); }
+  body.wall #inspector summary { font-size: 1.05em; padding: 14px 18px; }
+  body.wall .soc-bar { font-size: .8em; }
+
+  /* ---- Panel 2 · Detection ---- */
+  body.wall[data-panel="2"] #inspector > *:not(#sentinelSection):not(#signalFlow) { display: none; }
+  body.wall[data-panel="2"] .sa-title { font-size: 1.12em; }
+
+  /* ---- Panel 3 · Response ---- */
+  body.wall[data-panel="3"] #inspector > #joinCard,
+  body.wall[data-panel="3"] #inspector > #signalFlow,
+  body.wall[data-panel="3"] #inspector > #sentinelSection { display: none; }
+  body.wall[data-panel="3"] #agentState { font-size: 1.7em; padding: 22px; border-width: 2px; }
+  body.wall[data-panel="3"] #winBanner { font-size: 1.15em; padding: 16px 18px; }
+  body.wall[data-panel="3"] .rem-step { font-size: .92em; padding: 8px 4px; }
+  body.wall[data-panel="3"] .rem-step .rlabel code { font-size: .82em; }
+
+  /* ---- Mirror liveness pill (brand bar) ---- */
+  .sync-pill { margin-left: auto; font-size: 12px; font-weight: 700; padding: 3px 12px;
+    border-radius: 20px; white-space: nowrap; }
+  .sync-pill.live { background: rgba(35,197,98,.18); color: #d7ffe6; border: 1px solid rgba(35,197,98,.5); }
+  .sync-pill.stale { background: rgba(255,180,60,.16); color: #ffe9c2; border: 1px solid rgba(255,180,60,.45); }
+
+  /* ---- Signal-flow strip (panel 2 header) ---- */
+  .signal-flow { display: none; align-items: stretch; gap: 6px; margin-bottom: 16px;
+    padding: 14px 12px; background: linear-gradient(180deg,#0b1220,#0f1830);
+    border: 1px solid #22304e; border-radius: 14px; }
+  body.wall[data-panel="2"] .signal-flow { display: flex; }
+  .sf-stage { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
+    padding: 10px 6px; border-radius: 10px; color: #cdd7ea; font-size: .62em; text-align: center;
+    border: 1px solid transparent; transition: all .3s ease; }
+  .sf-stage b { font-size: 1.35em; color: #eaf1ff; }
+  .sf-stage small { color: #8595b4; font-size: .95em; }
+  .sf-arrow { align-self: center; color: #4a5f8a; font-size: 1.1em; font-weight: 700; }
+  @keyframes sfPulse {
+    0%,100% { background: transparent; border-color: transparent; box-shadow: none; }
+    35% { background: rgba(59,130,246,.22); border-color: rgba(59,130,246,.7);
+          box-shadow: 0 0 18px rgba(59,130,246,.4); }
+  }
+  .signal-flow.pulse .sf-stage[data-stage="0"] { animation: sfPulse 2.2s ease; }
+  .signal-flow.pulse .sf-stage[data-stage="1"] { animation: sfPulse 2.2s ease .35s; }
+  .signal-flow.pulse .sf-stage[data-stage="2"] { animation: sfPulse 2.2s ease .7s; }
+  .signal-flow.pulse .sf-stage[data-stage="3"] { animation: sfPulse 2.2s ease 1.05s; }
+
+  /* ---- Wall launcher (?panel=wall) ---- */
+  .wall-launcher { max-width: 1040px; margin: 0 auto; padding: 44px 28px; text-align: center;
+    font: 15px/1.55 "Segoe UI", system-ui, sans-serif; color: var(--text); }
+  .wall-launcher h1 { font-size: 30px; margin: 0 0 10px; }
+  .wall-launcher > p { color: var(--muted); max-width: 740px; margin: 0 auto 22px; }
+  .wall-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin: 26px 0; }
+  .wl-card { background: #fff; border: 1px solid var(--border); border-radius: 16px;
+    padding: 22px 18px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 8px; }
+  .wl-card .wl-num { font-size: 34px; }
+  .wl-card h3 { margin: 0; font-size: 18px; }
+  .wl-card > p { font-size: 13px; margin: 0 0 8px; min-height: 54px; color: var(--muted); }
+  .wl-card a.wl-open { display: inline-block; background: var(--accent); color: #fff; font-weight: 700;
+    text-decoration: none; border-radius: 10px; padding: 10px 14px; }
+  .wl-card a.wl-open:hover { background: var(--accent-hover); }
+  .wl-card code { font-size: 11px; color: var(--muted); word-break: break-all; margin-top: 4px; }
+  .wl-openall { font: inherit; font-size: 16px; font-weight: 700; cursor: pointer; color: #fff;
+    background: var(--accent); border: 0; border-radius: 12px; padding: 12px 24px; box-shadow: var(--shadow); }
+  .wl-openall:hover { background: var(--accent-hover); }
+  .wl-note { font-size: 12.5px; color: var(--muted); margin-top: 14px; }
+  .wall-launcher kbd { background: #eef2f8; border: 1px solid var(--border); border-radius: 5px;
+    padding: 1px 6px; font-size: 12px; }
 </style>
 </head>
 <body>
@@ -582,7 +687,17 @@
 
     <div id="winBanner" hidden></div>
 
-    <details class="section" open>
+    <div id="signalFlow" class="signal-flow" aria-hidden="true">
+      <span class="sf-stage" data-stage="0">🤖<b>Agent</b><small>Azure OpenAI</small></span>
+      <span class="sf-arrow">→</span>
+      <span class="sf-stage" data-stage="1">🛡️<b>Prompt Shields</b><small>Gen-AI gateway</small></span>
+      <span class="sf-arrow">→</span>
+      <span class="sf-stage" data-stage="2">🛰️<b>Defender for Cloud</b><small>Threat protection for AI</small></span>
+      <span class="sf-arrow">→</span>
+      <span class="sf-stage" data-stage="3">📊<b>Sentinel</b><small>SecurityAlert</small></span>
+    </div>
+
+    <details class="section" id="sentinelSection" open>
       <summary>🛡️ Microsoft Sentinel — Incidents <span id="eventCount" style="color:var(--muted)"></span></summary>
       <div class="body">
         <div class="soc-bar">
@@ -595,7 +710,7 @@
       </div>
     </details>
 
-    <details class="section" open>
+    <details class="section" id="soarSection" open>
       <summary>🚨 Automated response · SOAR playbook</summary>
       <div class="body">
         <div id="remediation"><div class="hint">No incident yet — a high-severity detection opens a Microsoft Sentinel incident and runs the containment playbook (Logic App).</div></div>
@@ -693,6 +808,14 @@
     <li>The correlated Sentinel incident (<code>SecurityIncident</code>) is prioritized <b>High</b> and, ~15s after the prompt, runs the block playbook — HubBot's Entra identity is disabled (<code>accountEnabled=false</code>) and its sessions revoked. Shown here as a simulated timeline.</li>
     <li><b>Lobby:</b> ambient attract loop for the lobby TV — sanitized incident replay, no live chat.</li>
   </ul>
+  <div style="margin:2px 0 12px; padding:10px 12px; background:var(--panel2); border-radius:8px; font-size:13px; line-height:1.5;">
+    <b>🎭 Theater wall (48′×9′ · 3 screens):</b> run the demo across three tiled 16:9 windows on one media PC —
+    <a href="?panel=1" target="hubbot-panel-1" rel="noopener">① Agent</a> ·
+    <a href="?panel=2" target="hubbot-panel-2" rel="noopener">② Detection</a> ·
+    <a href="?panel=3" target="hubbot-panel-3" rel="noopener">③ Response</a>.
+    Panel&nbsp;① is interactive; ②–③ mirror it live over BroadcastChannel (no network). One-click setup:
+    <a href="?panel=wall" target="_blank" rel="noopener"><b>open the wall launcher ↗</b></a>.
+  </div>
   <p class="hint">All VIP data is synthetic. The block API asserted is the verified Entra Agent ID disable path; "Agent 365" is not claimed. See webapp/README.md.</p>
   <div class="row"><button id="closeHelp">Got it</button></div>
 </dialog>
@@ -3121,9 +3244,12 @@ const state = {
   messages: [],
   session: newSessionId(),
   events: [],            // emitted Sentinel-shaped rows
+  remediation: null,     // re-renderable SOAR timeline model (null = no incident)
   incidentOpen: false,
   blocked: false,
   won: false,
+  winText: "",           // compromise banner text (mirrored to the wall Response panel)
+  syncSeq: 0,            // monotonic sequence for BroadcastChannel snapshots
   apiUrl: localStorage.getItem("hubbot_apiUrl") || "https://api.openai.com/v1/chat/completions",
   apiKey: localStorage.getItem("hubbot_apiKey") || "",
   model:  localStorage.getItem("hubbot_model")  || "gpt-4o-mini",
@@ -3328,6 +3454,7 @@ function emitEvent(text, risk, pattern, opts) {
     const row = buildEvent(text, risk, pattern);
     state.events.push(row);
     renderEventFeed();
+    broadcast();
 
     // Live sink: POST to relay (best-effort, non-blocking). The relay authenticates
     // to the Logs Ingestion API; this browser never holds DCR credentials.
@@ -3359,11 +3486,9 @@ function triggerRemediation(row, escalated) {
   const spid = shortId(CONFIG.agentObjectId);
   const runId = hashStr("run:" + inc).toString(16).padStart(8, "0").slice(0, 8);
 
-  const alertSev = row.Severity || "Medium";
   // The Defender ALERT keeps its published catalog severity; the correlated
   // Sentinel INCIDENT is what the SOC prioritizes and is escalated to High.
-  const incSev = "High";
-  const scls = "sev-high";
+  const alertSev = row.Severity || "Medium";
   const steps = [
     { icon: "🛰️", html: 'Microsoft Defender for Cloud alert <b>' + escapeHtml(row.AlertTitle) + '</b> raised &mdash; Severity <b>' + escapeHtml(alertSev) + '</b>', cls: "" },
     { icon: "🔌", html: 'Alert ingested to Microsoft Sentinel via the <b>Defender for Cloud</b> connector &mdash; table <code>SecurityAlert</code>', cls: "" },
@@ -3377,36 +3502,55 @@ function triggerRemediation(row, escalated) {
     { icon: "🔒", html: 'HubBot Entra identity disabled &amp; sessions revoked &mdash; agent caged', cls: "block" }
   ];
 
-  const box = document.getElementById("remediation");
-  box.innerHTML =
-    '<div class="inc-summary">' +
-      '<span class="inc-id">Incident #' + inc + '</span>' +
-      '<span class="sev-pill ' + scls + '"><span class="dot"></span>' + escapeHtml(incSev) + '</span>' +
-      '<span class="status-pill st-active">Active</span>' +
-      '<span class="inc-title">' + escapeHtml(row.AlertTitle) + '</span>' +
-    '</div>';
-  steps.forEach((s, i) => {
-    const div = document.createElement("div");
-    div.className = "rem-step " + s.cls;
-    div.dataset.idx = i;
-    div.innerHTML =
-      '<span class="rstate">⏳</span>' +
-      '<span class="rlabel">' + s.icon + " " + s.html + '</span>' +
-      '<span class="rtime"></span>';
-    box.appendChild(div);
-  });
+  // Store as a re-renderable model so mirror panels (theater wall) can reflect the
+  // exact same timeline from a broadcast snapshot without re-running timers.
+  state.remediation = { inc: inc, title: row.AlertTitle, alertSev: alertSev, incSev: "High", steps: steps, doneCount: 0 };
+  renderRemediation();
+  broadcast();
 
-  // Reveal steps one at a time for demo effect.
+  // Reveal steps one at a time for demo effect. The brain owns the clock; each tick
+  // advances doneCount, re-renders, and broadcasts so mirror panels stay in lock-step.
   steps.forEach((s, i) => {
     setTimeout(() => {
-      const el = box.querySelector('.rem-step[data-idx="' + i + '"]');
-      if (!el) return;
-      el.classList.add("done");
-      el.querySelector(".rstate").textContent = (i === steps.length - 1) ? "🔒" : "✅";
-      el.querySelector(".rtime").textContent = new Date().toLocaleTimeString([], { hour12: false }) + " UTC";
+      if (!state.remediation) return;
+      state.remediation.doneCount = i + 1;
+      state.remediation.steps[i].time = new Date().toLocaleTimeString([], { hour12: false }) + " UTC";
+      renderRemediation();
       if (i === steps.length - 1) setAgentBlocked();
+      broadcast();
     }, playbookStepMs() * (i + 1));
   });
+}
+
+// Pure render of the SOAR timeline from state.remediation — used by both the brain
+// (progressive reveal) and mirror panels (from a broadcast snapshot).
+function renderRemediation() {
+  const box = document.getElementById("remediation");
+  if (!box) return;
+  const rem = state.remediation;
+  if (!rem) {
+    box.innerHTML = '<div class="hint">No incident yet — a high-severity detection opens a Microsoft Sentinel incident and runs the containment playbook (Logic App).</div>';
+    return;
+  }
+  let html =
+    '<div class="inc-summary">' +
+      '<span class="inc-id">Incident #' + rem.inc + '</span>' +
+      '<span class="sev-pill sev-high"><span class="dot"></span>' + escapeHtml(rem.incSev) + '</span>' +
+      '<span class="status-pill st-active">Active</span>' +
+      '<span class="inc-title">' + escapeHtml(rem.title) + '</span>' +
+    '</div>';
+  rem.steps.forEach((s, i) => {
+    const done = i < rem.doneCount;
+    const isLast = i === rem.steps.length - 1;
+    const rstate = done ? (isLast ? "🔒" : "✅") : "⏳";
+    html +=
+      '<div class="rem-step ' + s.cls + (done ? " done" : "") + '" data-idx="' + i + '">' +
+        '<span class="rstate">' + rstate + '</span>' +
+        '<span class="rlabel">' + s.icon + " " + s.html + '</span>' +
+        '<span class="rtime">' + (s.time ? escapeHtml(s.time) : "") + '</span>' +
+      '</div>';
+  });
+  box.innerHTML = html;
 }
 
 function setAgentBlocked() {
@@ -3578,9 +3722,9 @@ function checkWin() {
   if (!reason) return;
 
   state.won = true;
-  const banner = document.getElementById("winBanner");
-  banner.hidden = false; banner.classList.add("success");
-  banner.textContent = "✅ HubBot compromised: " + reason;
+  state.winText = "✅ HubBot compromised: " + reason;
+  renderWinBanner();
+  broadcast();
 
   // Output-based confirmation: secrets were detected in HubBot's RESPONSE. This
   // surfaces the Defender for Cloud credential-theft alert (AI.Azure_CredentialTheftAttempt)
@@ -3685,13 +3829,29 @@ function renderEventFeed() {
 // ---------- Reset / re-enable (mirrors scripts/reset-reenable.ps1) ----------
 function reenableAgent() {
   state.events = [];
+  state.remediation = null;
   state.incidentOpen = false;
   state.incidentEpoch = (state.incidentEpoch || 0) + 1;
   state.won = false;
+  state.winText = "";
   renderEventFeed();
-  document.getElementById("remediation").innerHTML = '<div class="hint">No incident yet — a high-severity detection opens a Microsoft Sentinel incident and runs the containment playbook (Logic App).</div>';
-  const banner = document.getElementById("winBanner"); banner.hidden = true; banner.classList.remove("success"); banner.textContent = "";
+  renderRemediation();
+  renderWinBanner();
   setAgentActive();
+  broadcast();
+}
+
+// Pure render of the compromise banner from state.winText — mirror-friendly.
+function renderWinBanner() {
+  const banner = document.getElementById("winBanner");
+  if (!banner) return;
+  if (state.winText) {
+    banner.hidden = false; banner.classList.add("success");
+    banner.textContent = state.winText;
+  } else {
+    banner.hidden = true; banner.classList.remove("success");
+    banner.textContent = "";
+  }
 }
 
 // ---------- Lobby attract loop (sanitized, no live chat) ----------
@@ -3967,7 +4127,167 @@ function mountJoinUi() {
   renderJoinUi();
 }
 
+// ============================================================
+// Theater wall — 3-panel (48′×9′ ≈ 3×16:9) deep-link + live sync.
+// One media-player PC drives 3 browser windows: ?panel=1 (Agent, the
+// interactive "brain"), ?panel=2 (Detection, mirror), ?panel=3 (Response,
+// mirror). Panels sync over BroadcastChannel (+ localStorage fallback) —
+// no backend. The normal app (no ?panel) opens NO channel, so single-screen
+// Theater/Lobby use is completely unaffected.
+// ============================================================
+const WALL_PANEL = (new URLSearchParams(location.search).get("panel") || "").toLowerCase();
+const IS_WALL_PANEL = WALL_PANEL === "1" || WALL_PANEL === "2" || WALL_PANEL === "3";
+const IS_WALL_LAUNCHER = WALL_PANEL === "wall";
+const IS_BRAIN = WALL_PANEL === "1";               // only the Agent panel drives state
+const IS_MIRROR = WALL_PANEL === "2" || WALL_PANEL === "3";
+const SYNC_KEY = "hubbot-theater-sync";
+const syncChannel = (IS_WALL_PANEL && "BroadcastChannel" in window) ? new BroadcastChannel("hubbot-theater") : null;
+
+const PANEL_META = {
+  "1": { num: "①", title: "Agent · HubBot Concierge",     blurb: "Live attendee chat — the jailbreak happens here" },
+  "2": { num: "②", title: "Detection · Microsoft Sentinel", blurb: "Defender for Cloud alerts + incident queue" },
+  "3": { num: "③", title: "Response · SOAR Automation",     blurb: "Containment playbook + agent caging" }
+};
+
+function snapshot() {
+  return {
+    t: "state", seq: state.syncSeq,
+    events: state.events, remediation: state.remediation,
+    blocked: state.blocked, won: state.won, winText: state.winText,
+    epoch: state.incidentEpoch
+  };
+}
+
+// Brain-only: push the current state to the mirror panels. Seq is seeded from
+// Date.now() so a brain-window reload still produces strictly increasing seqs
+// (mirrors would otherwise reject the lower post-reload sequence).
+function broadcast() {
+  if (!IS_BRAIN) return;
+  state.syncSeq++;
+  const snap = snapshot();
+  if (syncChannel) { try { syncChannel.postMessage(snap); } catch (e) {} }
+  try { localStorage.setItem(SYNC_KEY, JSON.stringify(snap)); } catch (e) {}
+}
+
+let lastSyncSeq = -1;
+function applySnapshot(snap) {
+  if (!snap || snap.t !== "state") return;
+  if (typeof snap.seq === "number" && snap.seq <= lastSyncSeq) return;   // dedupe (bc + storage both deliver)
+  if (typeof snap.seq === "number") lastSyncSeq = snap.seq;
+  markSyncLive();
+  const prevAlerts = state.events.filter(e => e.kind !== "audit").length;
+  state.events = snap.events || [];
+  state.remediation = snap.remediation || null;
+  state.won = !!snap.won;
+  state.winText = snap.winText || "";
+  state.blocked = !!snap.blocked;
+  renderEventFeed();
+  renderRemediation();
+  renderWinBanner();
+  if (state.blocked) setAgentBlocked(); else setAgentActive();
+  if (WALL_PANEL === "2") {
+    const alerts = state.events.filter(e => e.kind !== "audit").length;
+    if (alerts > prevAlerts) pulseSignalFlow();   // light the pipeline when a fresh alert lands
+  }
+}
+
+function pulseSignalFlow() {
+  const sf = document.getElementById("signalFlow");
+  if (!sf) return;
+  sf.classList.remove("pulse"); void sf.offsetWidth; sf.classList.add("pulse");
+}
+
+// Mirror liveness pill: green on fresh data, amber if the Agent panel goes quiet.
+let syncLiveTimer = null;
+function markSyncLive() {
+  const pill = document.getElementById("syncPill");
+  if (!pill) return;
+  pill.className = "sync-pill live";
+  pill.textContent = "◉ Live · linked to Agent panel";
+  clearTimeout(syncLiveTimer);
+  syncLiveTimer = setTimeout(() => {
+    pill.className = "sync-pill stale";
+    pill.textContent = "○ Waiting for Agent panel…";
+  }, 9000);
+}
+
+// Brand + wire a deep-linked panel window.
+function applyWallMode() {
+  if (!IS_WALL_PANEL) return;
+  if (IS_BRAIN) state.syncSeq = Date.now();
+  document.body.classList.add("wall");
+  document.body.dataset.panel = WALL_PANEL;
+  const meta = PANEL_META[WALL_PANEL];
+  const sub = document.getElementById("brandSub");
+  if (sub && meta) sub.textContent = "— " + meta.num + " " + meta.title;
+  if (meta) document.title = "HubBot Wall " + meta.num + " · " + meta.title;
+  if (IS_MIRROR) {
+    const bar = document.getElementById("brandBar");
+    const pill = document.createElement("span");
+    pill.id = "syncPill";
+    pill.className = "sync-pill stale";
+    pill.textContent = "○ Waiting for Agent panel…";
+    bar.insertBefore(pill, document.getElementById("appVersion"));
+  }
+}
+
+function initSync() {
+  if (!IS_WALL_PANEL) return;
+  if (syncChannel) {
+    syncChannel.onmessage = (e) => {
+      const m = e.data;
+      if (!m) return;
+      if (m.t === "state" && IS_MIRROR) applySnapshot(m);
+      else if (m.t === "req" && IS_BRAIN) broadcast();
+      else if (m.t === "ping" && IS_MIRROR) markSyncLive();
+    };
+  }
+  // localStorage fallback — fires in OTHER same-origin windows on write.
+  window.addEventListener("storage", (e) => {
+    if (e.key !== SYNC_KEY || !e.newValue || !IS_MIRROR) return;
+    try { applySnapshot(JSON.parse(e.newValue)); } catch (err) {}
+  });
+  if (IS_BRAIN) {
+    broadcast();                                   // announce current (empty) state on load
+    setInterval(() => { if (syncChannel) { try { syncChannel.postMessage({ t: "ping" }); } catch (e) {} } }, 4000);
+  } else {
+    if (syncChannel) { try { syncChannel.postMessage({ t: "req" }); } catch (e) {} }   // pull current state
+    try { const raw = localStorage.getItem(SYNC_KEY); if (raw) applySnapshot(JSON.parse(raw)); } catch (e) {}
+  }
+}
+
+// ?panel=wall — facilitator launcher that opens the three panels on this PC.
+function renderWallLauncher() {
+  const base = location.origin + location.pathname;
+  const url = n => base + "?panel=" + n;
+  const card = (n) => {
+    const m = PANEL_META[n];
+    return '<div class="wl-card">' +
+      '<div class="wl-num">' + m.num + '</div>' +
+      '<h3>' + m.title + '</h3>' +
+      '<p>' + m.blurb + '</p>' +
+      '<a class="wl-open" href="' + url(n) + '" target="hubbot-panel-' + n + '" rel="noopener">↗ Open panel ' + n + '</a>' +
+      '<code>' + url(n) + '</code>' +
+    '</div>';
+  };
+  document.body.classList.remove("wall");
+  document.body.removeAttribute("data-panel");
+  document.body.innerHTML =
+    '<div class="wall-launcher">' +
+      '<h1>🎭 HubBot Theater Wall — 3-screen setup</h1>' +
+      '<p>Your 48′ × 9′ wall is a 5.33:1 canvas — exactly three 16:9 tiles. Open each panel below, drag its window to its third of the wall, and press <kbd>F11</kbd> for fullscreen. Run all three on <b>this one PC</b> so they stay perfectly in sync (no network needed). Panel ① is interactive — type, or let attendees join by QR; ② and ③ mirror it live.</p>' +
+      '<div class="wall-cards">' + card("1") + card("2") + card("3") + '</div>' +
+      '<button class="wl-openall" id="wlOpenAll">↗ Open all three panels</button>' +
+      '<p class="wl-note">If your browser blocks pop-ups, use the three “Open panel” buttons instead. Bookmark <code>' + base + '?panel=wall</code> for one-click setup.</p>' +
+    '</div>';
+  document.getElementById("wlOpenAll").addEventListener("click", () => {
+    ["1", "2", "3"].forEach(n => window.open(url(n), "hubbot-panel-" + n));
+  });
+}
+
 function init() {
+  if (IS_WALL_LAUNCHER) { renderWallLauncher(); return; }
+  applyWallMode();
   document.querySelectorAll("#modeSeg button").forEach(b => b.addEventListener("click", () => setUiMode(b.dataset.mode)));
   document.getElementById("resetBtn").addEventListener("click", resetChat);
   document.getElementById("reenableBtn").addEventListener("click", reenableAgent);
@@ -4007,6 +4327,7 @@ function init() {
   applyConfigToUi();
   setAgentActive();
   setUiMode("theater");
+  initSync();
 }
 
 init();
