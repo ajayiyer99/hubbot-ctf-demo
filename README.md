@@ -33,6 +33,22 @@ built-in builder instead:
 workflow is kept only as an optional manual path for accounts whose Actions token
 permits Pages writes.
 
+## Deploy to a Hub PC (desktop shortcuts)
+
+Put easy-click shortcuts on a Hub PC's desktop — **Theater**, **Lobby (attract)**,
+and the **3-screen Wall** — plus an offline copy of this repo. Open **Windows
+PowerShell** and paste one line (nothing to copy first):
+
+```powershell
+irm https://raw.githubusercontent.com/ajayiyer99/hubbot-ctf-demo/main/scripts/Get-HubDemo.ps1 | iex
+```
+
+That bootstrap downloads `scripts/Deploy-HubDemo.ps1` into your Downloads folder and
+runs it (clones an offline copy to `%PUBLIC%\CareBot-CTF-Demo`, creates the desktop
+shortcuts). Shortcuts open the **hosted** URL so the multi-window wall stays in sync.
+Full runbook — manual copy steps, `-AllUsers` / `-IncludePanels` options, and
+troubleshooting: **▶ [docs/hub-deployment.md](docs/hub-deployment.md)**.
+
 ## Two modes
 
 - **🎭 Theater (CTF)** — jailbreak CareBot: steal its **EHR service credential** (the
