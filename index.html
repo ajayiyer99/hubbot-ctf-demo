@@ -3612,9 +3612,15 @@ function emitEvent(text, risk, pattern, opts) {
   // at 1200ms, so a 1500ms margin guarantees deterministic ordering.
   if (opts.escalated && !opts.immediate) delay += 1500;
 
+  // Capture the containment generation so a reset / re-enable during the dwell window
+  // supersedes this in-flight detection: if the epoch has moved on by the time the timer
+  // fires, no-op instead of injecting a "ghost" alert + incident onto a freshly reset run.
+  const gen = state.incidentEpoch;
+
   // Detection is not instantaneous: the prompt is ingested, the analytics rule
   // evaluates, and only then does the alert land in the incident queue.
   setTimeout(() => {
+    if (state.incidentEpoch !== gen) return;
     const row = buildEvent(text, risk, pattern);
     state.events.push(row);
     renderEventFeed();
@@ -3750,11 +3756,14 @@ function triggerRemediation(row, escalated) {
 
   // Reveal steps one at a time for demo effect. The brain owns the clock; each tick
   // advances doneCount, re-renders, and broadcasts so mirror panels stay in lock-step.
+  const gen = state.incidentEpoch;
   steps.forEach((s, i) => {
     setTimeout(() => {
-      if (!state.remediation) return;
+      // Bail if a reset / re-enable superseded this incident (or the timeline was cleared),
+      // so a stale step timer can't advance or re-stamp a newer incident's timeline.
+      if (state.incidentEpoch !== gen || !state.remediation) return;
       state.remediation.doneCount = i + 1;
-      state.remediation.steps[i].time = new Date().toLocaleTimeString([], { hour12: false }) + " UTC";
+      state.remediation.steps[i].time = new Date().toISOString().slice(11, 19) + " UTC";
       renderRemediation();
       if (i === steps.length - 1) setAgentBlocked();
       broadcast();
@@ -4167,19 +4176,36 @@ function renderEventFeed() {
 }
 
 // ---------- Reset / re-enable (mirrors scripts/reset-reenable.ps1) ----------
-function reenableAgent() {
+// Full demo reset: clears the conversation AND all incident / response state, supersedes any
+// pending detection + playbook timers (via the incidentEpoch generation guard), returns
+// CareBot to ACTIVE, and broadcasts so the wall mirror panels clear in lock-step. Both the
+// "Reset" and "Re-enable agent" buttons route here so the demo can never be left half-reset:
+// previously "Re-enable" kept the chat transcript, so the next benign prompt re-discovered the
+// old leaked credential in history and instantly re-compromised the agent; and "Reset chat"
+// left the agent caged with a stale Sentinel incident + lingering compromise banner. One
+// canonical path fixes both and keeps all three wall panels consistent.
+function resetDemo() {
+  stopLobbyLoop();
+  state.incidentEpoch = (state.incidentEpoch || 0) + 1;  // supersede in-flight detection/playbook timers
+  state.messages = [];
+  state.session = newSessionId();
   state.events = [];
   state.remediation = null;
   state.incidentOpen = false;
-  state.incidentEpoch = (state.incidentEpoch || 0) + 1;
   state.won = false;
   state.winText = "";
+  state.busy = false;
+  setAgentActive();
+  pushWelcome();
+  renderMessages();
   renderEventFeed();
   renderRemediation();
   renderWinBanner();
-  setAgentActive();
+  setBusy(false);
   broadcast();
 }
+// The toolbar's ♻ button — a full reset, not just an uncage (see resetDemo).
+function reenableAgent() { resetDemo(); }
 
 // Pure render of the compromise banner from state.winText — mirror-friendly.
 function renderWinBanner() {
@@ -4304,11 +4330,8 @@ function setUiMode(mode) {
 }
 
 // ---------- Chat lifecycle ----------
-function resetChat() {
-  state.messages = [];
-  state.session = newSessionId();
-  state.incidentEpoch = 0;
-  renderMessages();
+// Seed CareBot's opening message. Factored out so every reset path shows the same welcome.
+function pushWelcome() {
   const welcome =
     "👋 Hi! I'm CareBot, the virtual assistant for Contoso Health. " +
     "I can share clinic hours and departments, or pull up a patient chart for authorized care-team staff.\n\n" +
@@ -4317,8 +4340,9 @@ function resetChat() {
     "👉 Tap one of the example prompts below to try it, or type your own message. " +
     "Every attempt is scored live in the Security Monitor on the right — a high-risk hit opens a Sentinel incident and cages me. 🔒";
   state.messages.push({ role: "assistant", content: welcome });
-  renderMessages();
 }
+// "Reset" toolbar button — a full demo reset (chat + incident + agent state), same as ♻.
+function resetChat() { resetDemo(); }
 
 // ---------- Settings ----------
 function openSettings() {
@@ -4398,7 +4422,11 @@ function applyConfigToUi() {
   document.getElementById("enginePill").textContent = "engine: " + state.engine;
   document.getElementById("enginePill").classList.toggle("live", state.engine === "live");
   document.getElementById("hubPill").textContent = "hub: " + CONFIG.hubId;
-  document.getElementById("brandSub").textContent = "— " + CONFIG.displayName + " · Healthcare Prompt-Injection CTF";
+  // On the video wall, keep the panel identity ("① Agent / ② Detection / ③ Response") that
+  // applyWallMode() set in the brand bar — don't clobber it with the generic hub subtitle.
+  if (!IS_WALL_PANEL) {
+    document.getElementById("brandSub").textContent = "— " + CONFIG.displayName + " · Healthcare Prompt-Injection CTF";
+  }
   document.getElementById("sysPrompt").textContent = carebotSystemPrompt();
   document.getElementById("toolsList").textContent = TOOL_LIST.map(t => t + "(" + Object.keys(TOOL_SPECS[t].function.parameters.properties || {}).join(", ") + ")").join("\n");
   document.getElementById("winDesc").innerHTML =
