@@ -569,6 +569,17 @@
   body.wall[data-panel="1"] .msg { max-width: 88%; font-size: 1.02em; }
   body.wall[data-panel="1"] .sp-chip { font-size: .9em; padding: 9px 16px; }
   body.wall[data-panel="1"] #inputForm textarea { font-size: 1em; }
+  /* The "compromised" banner is an Agent-plane truth (the jailbreak just landed here),
+     so it surfaces on Panel 1 — not on Response. Panel 3 stays purely Sentinel-driven
+     (ACTIVE -> incident on Panel 2 -> CAGED), so the wall reads left-to-right and the
+     detection dwell gap is visible (P1 red while P3 still shows ACTIVE). */
+  body.wall[data-panel="1"] #inspector > #winBanner:not([hidden]) {
+    display: block; position: fixed;
+    left: 50%; transform: translateX(-50%);
+    bottom: 178px; width: min(86%, 880px); margin: 0;
+    z-index: 55; text-align: center;
+    font-size: 1.14em; font-weight: 700; padding: 14px 20px; box-shadow: var(--shadow);
+  }
 
   /* ---- Panels 2 & 3 fill the inspector column full-bleed ---- */
   body.wall[data-panel="2"] #inspector,
@@ -583,12 +594,12 @@
   body.wall[data-panel="2"] #inspector > *:not(#sentinelSection):not(#signalFlow) { display: none; }
   body.wall[data-panel="2"] .sa-title { font-size: 1.12em; }
 
-  /* ---- Panel 3 · Response ---- */
+  /* ---- Panel 3 · Response (purely Sentinel-driven: no compromise banner here) ---- */
   body.wall[data-panel="3"] #inspector > #joinCard,
   body.wall[data-panel="3"] #inspector > #signalFlow,
+  body.wall[data-panel="3"] #inspector > #winBanner,
   body.wall[data-panel="3"] #inspector > #sentinelSection { display: none; }
   body.wall[data-panel="3"] #agentState { font-size: 1.7em; padding: 22px; border-width: 2px; }
-  body.wall[data-panel="3"] #winBanner { font-size: 1.15em; padding: 16px 18px; }
   body.wall[data-panel="3"] .rem-step { font-size: .92em; padding: 8px 4px; }
   body.wall[data-panel="3"] .rem-step .rlabel code { font-size: .82em; }
 
