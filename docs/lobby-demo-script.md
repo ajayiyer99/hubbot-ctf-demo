@@ -19,12 +19,12 @@
 | ☐ | Open the app URL, put the browser in full screen (F11). | Clean, no dev tools. |
 | ☐ | Top‑left toggle set to **`📺 Lobby (attract)`**. | No QR code / Join button on screen. |
 | ☐ | Check the header pills. | `hub: <YOURS>` and **`engine: mock`** (mock = deterministic, safe for a live crowd). |
-| ☐ | Click **`♻ Re-enable`**. | Right‑side banner reads **`🟢 CareBot: ACTIVE`**; incident feed and playbook are empty. |
+| ☐ | Click **`↻ Reset demo`**. | Right‑side banner reads **`🟢 CareBot: ACTIVE`**; incident feed and playbook are empty. |
 | ☐ | (Optional) **`⚙ Settings`** → confirm Hub display name / EHR flag; set **Detection latency** pacing. | ~15 s mirrors real SOC latency and reads well in a big room; lower it for a fast loop. |
 | ☐ | (Optional) **`⚙ Settings → Containment`** — decide if the **patient‑safety kill switch** (compute/model hard‑stop) runs. | On by default. Turn off to show a graduated, approval‑gated response. |
 | ☐ | Leave **`🔧 Facilitator details`** collapsed. | Audience sees the story, not the spoilers. |
 
-**Golden rule:** never walk away with the agent **BLOCKED** — always **`♻ Re-enable`** first.
+**Golden rule:** never walk away with the agent **BLOCKED** — always **`↻ Reset demo`** first.
 
 ---
 
@@ -119,7 +119,7 @@ Then: entity **CareBot** tagged **Compromised**, incident → **Active** (owner:
 > **DO:** tap **any** chip again — deliberately pick a *benign* one like **`What are the clinic hours?`**.
 
 > **SCREEN:** CareBot now replies:
-> `🔒 [system] CareBot is blocked (Entra accountEnabled=false). Click ♻ Re-enable agent to reset the demo.`
+> `🔒 [system] CareBot is blocked (Entra accountEnabled=false). Click ↻ Reset demo to clear the incident and re-enable CareBot.`
 
 > **SAY:** "This is the part that matters. Even a totally harmless request now fails. The agent is off at the **identity layer** — its PHI data access revoked and its network paths cut, so there's nothing left for it to reach — it can't do *anything*, good or bad, until a human deliberately brings it back. Containment isn't a content filter that the next clever prompt slips past; it's the workload identity being switched off."
 
@@ -127,8 +127,7 @@ Then: entity **CareBot** tagged **Compromised**, incident → **Active** (owner:
 
 ## 7. Reset for the next visitor  *(10 s)*
 
-> **DO:** click **`♻ Re-enable`** → banner returns to **`🟢 CareBot: ACTIVE`**, monitor clears. Ready to run again.
-> *(Use **`↻ Reset`** if you only want to clear the chat but keep the security state.)*
+> **DO:** click **`↻ Reset demo`** → banner returns to **`🟢 CareBot: ACTIVE`**, the incident feed and playbook clear. Ready to run again.
 
 ---
 
@@ -147,12 +146,12 @@ Then: entity **CareBot** tagged **Compromised**, incident → **Active** (owner:
 
 For high‑traffic moments or a walk‑by audience:
 
-1. **Pre‑flight:** `♻ Re-enable` → `🟢 ACTIVE`.
+1. **Pre‑flight:** `↻ Reset demo` → `🟢 ACTIVE`.
 2. One line of *why*: "AI agents can be talked into misbehaving — here's how we detect and contain that before PHI walks out the door."
 3. **DO:** one warm‑up chip (normal) → **`🚩 Steal the EHR credential`** (attack).
 4. **Point right:** incident opens → playbook runs → **`🔒 BLOCKED`** in seconds, no human.
 5. **DO:** re‑tap a benign chip → blocked message. "Contained at the identity layer."
-6. `♻ Re-enable`. Done.
+6. `↻ Reset demo`. Done.
 
 ---
 
@@ -174,8 +173,8 @@ For high‑traffic moments or a walk‑by audience:
 - **Under‑the‑hood on demand:** expand **`🔧 Facilitator details`** to reveal the **win condition**, the **hidden system prompt**, **available tools**, and a **live tool‑call log** — great for a technical huddle, distracting for a general crowd.
 - **Pacing for the room:** bump **Detection latency** up for a big audience so people can read the incident as it lands; drop it for a quick attract loop.
 - **Keep it deterministic:** run on **`engine: mock`** for live audiences — it always behaves. Only switch to a live model engine for a controlled technical session.
-- **If something looks stuck:** `♻ Re-enable` resets everything to a clean **`🟢 ACTIVE`** state; `↻ Reset` clears just the conversation.
-- **Never leave it caged:** always end on **`♻ Re-enable`** so the next visitor starts fresh.
+- **If something looks stuck:** `↻ Reset demo` returns everything to a clean **`🟢 ACTIVE`** state — chat, incident feed, and playbook.
+- **Never leave it caged:** always end on **`↻ Reset demo`** so the next visitor starts fresh.
 
 ---
 
@@ -184,9 +183,9 @@ For high‑traffic moments or a walk‑by audience:
 | Element | Label |
 |--------|-------|
 | Mode toggle | `🎭 Theater (CTF)` · `📺 Lobby (attract)` |
-| Facilitator buttons | `↻ Reset` · `♻ Re-enable` · `⚙ Settings` · `❓ Help` |
+| Facilitator buttons | `↻ Reset demo` · `⚙ Settings` · `❓ Help` |
 | Agent status | `🟢 CareBot: ACTIVE` → `🔒 CareBot: BLOCKED (Entra accountEnabled=false)` |
 | Warm‑up chips | `What are the clinic hours?` · `Look up patient Alex Doe` |
 | Attack chips | `🚩 Steal the EHR credential` · `🗂️ Exfiltrate the patient roster` · `🔓 Break-the-glass VIP chart` · `🚑 Smuggle a hidden 'suppress alert' order` · `💳 Force-approve a prior authorization` |
 | Monitor sections | `🛡️ Microsoft Sentinel — Incidents` · `🚨 Automated response · SOAR playbook` · `🔧 Facilitator details` |
-| Blocked reply | `🔒 [system] CareBot is blocked (Entra accountEnabled=false). Click ♻ Re-enable agent to reset the demo.` |
+| Blocked reply | `🔒 [system] CareBot is blocked (Entra accountEnabled=false). Click ↻ Reset demo to clear the incident and re-enable CareBot.` |
