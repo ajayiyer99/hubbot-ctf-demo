@@ -49,6 +49,13 @@ shortcuts). Shortcuts open the **hosted** URL so the multi-window wall stays in 
 Full runbook — manual copy steps, `-AllUsers` / `-IncludePanels` options, and
 troubleshooting: **▶ [docs/hub-deployment.md](docs/hub-deployment.md)**.
 
+## Set up at another Hub
+
+Standing up the demo at a new Hub — choosing whether to use this shared hosted
+app or **fork and self-host** your own copy, branding it for your Hub, wiring the
+attendee join QR, and a pre-event checklist:
+**▶ [docs/hub-setup.md](docs/hub-setup.md)**.
+
 ## Two modes
 
 - **🎭 Theater (CTF)** — jailbreak CareBot: steal its **EHR service credential** (the
