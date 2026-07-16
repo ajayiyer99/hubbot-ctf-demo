@@ -23,7 +23,7 @@ of PowerShell lines.
 
 There are two ways to run the demo at your Hub. The deploy script supports both.
 
-| | **Path A - Shared hosted app** | **Path B - Fork & self-host** |
+| | **Path A - Shared hosted app (Recommended)** | **Path B - Fork & self-host** |
 | --- | --- | --- |
 | Setup effort | Lowest - no GitHub account needed | Moderate - fork + enable Pages once |
 | URL | Shared: `https://ajayiyer99.github.io/hubbot-ctf-demo/` | Your own: `https://<org>.github.io/<repo>/` |
