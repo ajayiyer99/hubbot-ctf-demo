@@ -92,7 +92,22 @@ is added for bulk-PHI exfiltration / prior-auth tampering / High-severity attack
 OpenAI key rotation) — is reserved for a High-severity smuggled clinical-action injection
 and gated by a Settings toggle. Those extra layers map to real Microsoft Graph / Azure ARM
 operations but, like the rest of the timeline, are **simulated** here, not asserted as
-wired. No "Agent 365" block API is asserted.
+wired.
+
+**Identity-plane risk and Conditional Access.** The timeline also surfaces two
+steps that mirror the emerging Entra ID Protection for Agents pattern: the
+agent's risk is raised to High, then a risk-based Conditional Access policy
+blocks its token issuance. In the product, an admin or automation marks a
+compromised agent with the "Confirm compromise" action, which sets risk to High
+and lets a risk-based Conditional Access policy block access. The optional
+"Confirm compromise (analyst)" button in the Response panel maps to that admin
+action: it confirms the incident and completes the cage immediately, while the
+unattended auto-containment still runs on its own for Lobby and wall playback.
+This capability is new and licensing-gated (Microsoft Agent 365), so it is shown
+here as an illustrative, simulated step rather than a live tenant call. No live
+block API (Agent 365, Entra ID Protection for Agents, Microsoft Graph, or Azure
+ARM) is called from this frontend. Reference: Microsoft Learn, "Securing risky
+AI agents" (https://learn.microsoft.com/en-us/entra/id-protection/concept-risky-agents).
 
 ## Source / full demo package
 

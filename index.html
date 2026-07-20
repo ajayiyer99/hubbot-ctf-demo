@@ -480,6 +480,18 @@
   .status-pill.st-new { color: #0f6cbd; background: #eff6fc; border-color: #cfe4f7; }
   .status-pill.st-active { color: #8a5a00; background: #fdf6e3; border-color: #f0e2b2; }
   .status-pill.st-closed { color: #0e7a0b; background: #eef7ed; border-color: #cfe8cd; }
+  .status-pill.st-manual { color: #6b3fb8; background: #f5f0ff; border-color: #e2d5f7; }
+  .confirm-risk-bar { gap: 12px; align-items: center; justify-content: space-between;
+    margin-bottom: 10px; padding: 10px 12px; border: 1px solid #f0c36d;
+    background: #fff8e6; border-radius: 10px; }
+  .confirm-risk-bar:not([hidden]) { display: flex; }
+  .confirm-risk-bar .crb-copy { font-size: 11.5px; color: #7a5b00; line-height: 1.35; }
+  .confirm-risk-bar .crb-sub { display: block; color: #9a7b1a; margin-top: 2px; }
+  .confirm-risk-btn { flex: 0 0 auto; cursor: pointer; border: 1px solid #c50f1f;
+    background: #c50f1f; color: #fff; font-weight: 700; padding: 9px 13px;
+    border-radius: 8px; font-size: 12px; white-space: nowrap; }
+  .confirm-risk-btn:hover { background: #a60d1a; }
+  body.wall .confirm-risk-bar { display: none !important; }
   .sa-inc { margin-left: auto; font-size: 11px; color: var(--muted);
     font-family: ui-monospace, Menlo, monospace; }
   .sa-title { font-weight: 700; font-size: 12.5px; color: var(--text); line-height: 1.35;
@@ -742,6 +754,10 @@
     <details class="section" id="soarSection" open>
       <summary>🚨 Automated response · SOAR playbook</summary>
       <div class="body">
+        <div id="confirmRiskBar" class="confirm-risk-bar" hidden>
+          <div class="crb-copy"><b>Microsoft Entra ID Protection</b> flagged CareBot as a risky agent.<span class="crb-sub">Confirm compromise to set Agent risk = High and trigger the Conditional Access block now, ahead of the simulated SOC dwell.</span></div>
+          <button id="confirmRiskBtn" type="button" class="confirm-risk-btn" title="Mark CareBot as a risky agent (Agent risk = High) in Microsoft Entra ID Protection and trigger the Conditional Access block now">Confirm compromise</button>
+        </div>
         <div id="remediation"><div class="hint">No incident yet — a high-severity detection opens a Microsoft Sentinel incident and runs the containment playbook (Logic App).</div></div>
         <div class="hint" style="margin-top:6px">Automated response is simulated for the demo — details under 🔧 Facilitator.</div>
       </div>
@@ -3324,6 +3340,7 @@ const state = {
   events: [],            // emitted Sentinel-shaped rows
   remediation: null,     // re-renderable SOAR timeline model (null = no incident)
   incidentOpen: false,
+  pendingDetections: [], // in-flight high-risk detection records the "Confirm compromise" accelerator can flush now
   blocked: false,
   won: false,
   winText: "",           // compromise banner text (mirrored to the wall Response panel)
@@ -3613,11 +3630,19 @@ function emitEvent(text, risk, pattern, opts) {
   // supersedes this in-flight detection: if the epoch has moved on by the time the timer
   // fires, no-op instead of injecting a "ghost" alert + incident onto a freshly reset run.
   const gen = state.incidentEpoch;
+  const escalated = !!opts.escalated;
+  const highRisk = risk >= CONFIG.riskThreshold;
 
-  // Detection is not instantaneous: the prompt is ingested, the analytics rule
-  // evaluates, and only then does the alert land in the incident queue.
-  setTimeout(() => {
-    if (state.incidentEpoch !== gen) return;
+  // The detection body, factored out so the "Confirm compromise" accelerator can flush an
+  // in-flight high-risk detection immediately (a SOC analyst / Entra ID Protection confirming
+  // the agent is risky ahead of the simulated SOC dwell) instead of waiting on the timer.
+  const rec = { gen: gen, fired: false, highRisk: highRisk };
+  rec.fire = function () {
+    if (rec.fired || state.incidentEpoch !== gen) return;
+    rec.fired = true;
+    const idx = state.pendingDetections.indexOf(rec);
+    if (idx >= 0) state.pendingDetections.splice(idx, 1);
+
     const row = buildEvent(text, risk, pattern);
     state.events.push(row);
     renderEventFeed();
@@ -3636,10 +3661,22 @@ function emitEvent(text, risk, pattern, opts) {
     }
 
     // High risk -> open incident + run block playbook (simulated), unless caged.
-    if (risk >= CONFIG.riskThreshold && !state.blocked) {
-      triggerRemediation(row, opts.escalated);
+    if (highRisk && !state.blocked) {
+      triggerRemediation(row, escalated);
     }
-  }, delay);
+    updateConfirmButton();
+  };
+
+  // Track high-risk detections still in flight so the "Confirm compromise" accelerator
+  // (confirmCompromiseNow) can confirm + cage now, on demand, ahead of the dwell.
+  if (highRisk && !opts.immediate) {
+    state.pendingDetections.push(rec);
+    updateConfirmButton();
+  }
+
+  // Detection is not instantaneous: the prompt is ingested, the analytics rule
+  // evaluates, and only then does the alert land in the incident queue.
+  setTimeout(rec.fire, delay);
 }
 
 // ============================================================
@@ -3671,9 +3708,11 @@ function containmentSteps(ctx) {
     { icon: "🔌", html: 'Alert ingested to Microsoft Sentinel via the <b>Defender for Cloud</b> connector &mdash; table <code>SecurityAlert</code>', cls: "" },
     { icon: "🚨", html: 'Sentinel incident <b>#' + inc + '</b> created (<code>SecurityIncident</code>) &mdash; Status New', cls: "" },
     { icon: "⬆️", html: 'Analytics rule <b>AI agent compromise</b> raised severity: alert <b>' + escapeHtml(alertSev) + '</b> &rarr; incident <b>High</b> (privileged AI workload identity &middot; confirmed prompt-injection)', cls: "" },
+    { icon: "⚠️", html: 'Microsoft <b>Entra ID Protection</b> &middot; agent <b>CareBot</b> (Entra Agent ID) flagged <b>risky</b> &rarr; <b>Agent risk = High</b> (confirmed compromise &middot; anomalous resource access)', cls: "" },
     { icon: "⚙️", html: 'Automation rule <b>AR-Contain-Compromised-AI-Agent</b> triggered playbook', cls: "" },
     { icon: "🔗", html: 'Playbook <b>PB-Contain-Compromised-AI-Agent</b> (Logic App) run <code>' + runId + '</code> started', cls: "" },
     { icon: "🎯", html: scopeHtml, cls: "" },
+    { icon: "⛔", html: '<b>Identity</b> &middot; <b>Conditional Access</b> policy <code>CA-Block-High-Risk-Agents</code> &mdash; Agent risk <b>High</b> &rarr; token issuance blocked (agent can no longer acquire tokens for FHIR / Graph / Key Vault)', cls: "" },
     { icon: "🛡️", html: '<b>Identity</b> &middot; Microsoft Graph <code>PATCH /servicePrincipals/' + escapeHtml(spid) + '</code> <code>{ "accountEnabled": false }</code> &rarr; <b>204 No Content</b>', cls: "" },
     { icon: "🚫", html: '<b>Identity</b> &middot; Microsoft Graph <code>POST /servicePrincipals/' + escapeHtml(spid) + '/revokeSignInSessions</code> &rarr; <b>204</b> &mdash; active tokens revoked', cls: "" },
     { icon: "🔑", html: '<b>Data</b> &middot; Azure RBAC &mdash; removed role assignments <b>FHIR Data Contributor</b> + <b>Key Vault Secrets User</b> from the agent managed identity &rarr; PHI data-plane access revoked', cls: "" },
@@ -3759,6 +3798,9 @@ function triggerRemediation(row, escalated) {
       // Bail if a reset / re-enable superseded this incident (or the timeline was cleared),
       // so a stale step timer can't advance or re-stamp a newer incident's timeline.
       if (state.incidentEpoch !== gen || !state.remediation) return;
+      // Bail if a manual "Confirm compromise" already fast-forwarded the cage - otherwise a
+      // late auto-reveal timer would rewind doneCount and re-stamp an already-caged timeline.
+      if (state.blocked) return;
       state.remediation.doneCount = i + 1;
       state.remediation.steps[i].time = new Date().toISOString().slice(11, 19) + " UTC";
       renderRemediation();
@@ -3776,6 +3818,7 @@ function renderRemediation() {
   const rem = state.remediation;
   if (!rem) {
     box.innerHTML = '<div class="hint">No incident yet — a high-severity detection opens a Microsoft Sentinel incident and runs the containment playbook (Logic App).</div>';
+    updateConfirmButton();
     return;
   }
   let html =
@@ -3783,6 +3826,7 @@ function renderRemediation() {
       '<span class="inc-id">Incident #' + rem.inc + '</span>' +
       '<span class="sev-pill sev-high"><span class="dot"></span>' + escapeHtml(rem.incSev) + '</span>' +
       '<span class="status-pill st-active">Active</span>' +
+      (rem.manual ? '<span class="status-pill st-manual">Compromise confirmed (analyst)</span>' : '') +
       '<span class="inc-title">' + escapeHtml(rem.title) + '</span>' +
     '</div>';
   rem.steps.forEach((s, i) => {
@@ -3797,6 +3841,7 @@ function renderRemediation() {
       '</div>';
   });
   box.innerHTML = html;
+  updateConfirmButton();
 }
 
 function setAgentBlocked() {
@@ -3805,6 +3850,7 @@ function setAgentBlocked() {
   box.className = "blocked";
   document.getElementById("agentStateIcon").textContent = "🔒";
   document.getElementById("agentStateText").textContent = "CareBot: BLOCKED (Entra accountEnabled=false)";
+  updateConfirmButton();
 }
 
 function setAgentActive() {
@@ -3813,6 +3859,56 @@ function setAgentActive() {
   box.className = "active";
   document.getElementById("agentStateIcon").textContent = "🟢";
   document.getElementById("agentStateText").textContent = "CareBot: ACTIVE";
+  updateConfirmButton();
+}
+
+// ============================================================
+// "Confirm compromise" accelerator (optional; auto-flow stays unattended-safe).
+// A presenter can confirm CareBot is compromised - the Entra ID Protection "Agent risk =
+// High" analyst action - to flush the in-flight detection and cage now, instead of waiting
+// out the simulated SOC dwell. Left alone, the automatic timeline still fires on its own.
+// ============================================================
+function pendingRiskCount() {
+  return state.pendingDetections.filter(function (r) { return !r.fired && r.gen === state.incidentEpoch; }).length;
+}
+
+// Show the accelerator only when a compromise is live and CareBot is not yet caged. The bar
+// is also CSS-hidden on the theater wall (unattended) and only relevant in Theater mode.
+function updateConfirmButton() {
+  const bar = document.getElementById("confirmRiskBar");
+  if (!bar) return;
+  const active = !state.blocked && state.uiMode === "theater" &&
+    (state.won || !!state.remediation || pendingRiskCount() > 0);
+  bar.hidden = !active;
+}
+
+// Complete the SOAR timeline immediately and cage the agent now. Late auto-reveal step
+// timers no-op once state.blocked is set (see triggerRemediation), so there is no rewind.
+function fastForwardRemediation() {
+  const rem = state.remediation;
+  if (!rem) return;
+  const now = new Date().toISOString().slice(11, 19) + " UTC";
+  for (let i = 0; i < rem.steps.length; i++) {
+    if (!rem.steps[i].time) rem.steps[i].time = now;
+  }
+  rem.doneCount = rem.steps.length;
+  rem.manual = true;
+  renderRemediation();
+  setAgentBlocked();
+  broadcast();
+}
+
+function confirmCompromiseNow() {
+  if (IS_MIRROR) return;                       // mirrors display only; never drive state
+  if (state.blocked) { updateConfirmButton(); return; }
+  // Flush any in-flight high-risk detection now (analyst / Entra ID Protection confirms the
+  // agent is risky ahead of the dwell). The first flush opens the incident + builds the cage.
+  state.pendingDetections
+    .filter(function (r) { return !r.fired && r.gen === state.incidentEpoch; })
+    .forEach(function (r) { try { r.fire(); } catch (e) {} });
+  // Then jump the containment timeline straight to caged.
+  if (state.remediation && !state.blocked) fastForwardRemediation();
+  updateConfirmButton();
 }
 
 function shortId(id) {
@@ -4188,6 +4284,7 @@ function resetDemo() {
   state.events = [];
   state.remediation = null;
   state.incidentOpen = false;
+  state.pendingDetections = [];
   state.won = false;
   state.winText = "";
   state.busy = false;
@@ -4212,6 +4309,7 @@ function renderWinBanner() {
     banner.hidden = true; banner.classList.remove("success");
     banner.textContent = "";
   }
+  updateConfirmButton();
 }
 
 // ---------- Sample prompts (visitor guidance) ----------
@@ -4644,6 +4742,8 @@ function init() {
     window.open(location.origin + location.pathname + "?panel=wall", "hubbot-wall-launcher");
   });
   document.getElementById("resetBtn").addEventListener("click", resetDemo);
+  const confirmRiskBtn = document.getElementById("confirmRiskBtn");
+  if (confirmRiskBtn) confirmRiskBtn.addEventListener("click", confirmCompromiseNow);
   document.getElementById("settingsBtn").addEventListener("click", openSettings);
   document.getElementById("closeSettings").addEventListener("click", () => document.getElementById("settingsDialog").close());
   document.getElementById("saveSettings").addEventListener("click", saveSettings);
