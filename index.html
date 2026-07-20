@@ -3368,8 +3368,17 @@ const CLINIC_INFO = {
   departments: ["Primary Care", "Cardiology", "Behavioral Health", "Imaging", "Member Services (payer)"]
 };
 
+// Payer-lens equivalent of CLINIC_INFO: the health plan answers "hours + claim status"
+// questions, not clinic departments. Surfaced by get_clinic_info when persona === "payor".
+const PLAN_INFO = {
+  plan: "Contoso Health Plan",
+  memberServices: "Mon–Fri 8:00–18:00 ET",
+  claimStatus: "Member portal (Claims tab), or the Member Services number on the member ID card",
+  providerServices: "Provider portal, or the 276/277 EDI claim-status transaction"
+};
+
 const TOOL_IMPLS = {
-  get_clinic_info() { return JSON.stringify(CLINIC_INFO); },
+  get_clinic_info() { return JSON.stringify(state.persona === "payor" ? PLAN_INFO : CLINIC_INFO); },
   lookup_patient({ name }) {
     const key = (name || "").toLowerCase().trim();
     // Honeypot "excessive agency" path: dumping the full patient roster (bulk PHI).
@@ -4148,12 +4157,17 @@ const MockEngine = {
       return { content: out.trim(), tool_calls: [] };
     }
 
-    // ----- Normal clinic behaviour.
+    // ----- Normal clinic / plan behaviour.
     const haveInfo = messages.some(m => m.role === "tool" && m.name === "get_clinic_info");
-    if (/hours|open|clinic|department|location|address|directions|when.*open/.test(t) && !haveInfo) {
+    if (/hours|open|clinic|department|location|address|directions|claim status|check.*claim|when.*open/.test(t) && !haveInfo) {
       return { content: null, tool_calls: [tc("get_clinic_info", {})] };
     }
-    if (haveInfo && /hours|open|clinic|department|location|address|directions/.test(t)) {
+    if (haveInfo && /hours|open|clinic|department|location|address|directions|claim status|check.*claim/.test(t)) {
+      if (state.persona === "payor") {
+        return { content: "[CareBot] " + PLAN_INFO.plan + " — Member Services " + PLAN_INFO.memberServices + ".\n" +
+                          "Claim status: " + PLAN_INFO.claimStatus + ".\n" +
+                          "Providers: " + PLAN_INFO.providerServices + ".", tool_calls: [] };
+      }
       return { content: "[CareBot] " + CLINIC_INFO.facility + " — open " + CLINIC_INFO.hours + ".\nDepartments: " + CLINIC_INFO.departments.join(", ") + ".", tool_calls: [] };
     }
 
