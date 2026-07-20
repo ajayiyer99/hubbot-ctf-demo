@@ -95,19 +95,21 @@ operations but, like the rest of the timeline, are **simulated** here, not asser
 wired.
 
 **Identity-plane risk and Conditional Access.** The timeline also surfaces two
-steps that mirror the emerging Entra ID Protection for Agents pattern: the
-agent's risk is raised to High, then a risk-based Conditional Access policy
-blocks its token issuance. In the product, an admin or automation marks a
-compromised agent with the "Confirm compromise" action, which sets risk to High
-and lets a risk-based Conditional Access policy block access. The optional
-"Confirm compromise (analyst)" button in the Response panel maps to that admin
-action: it confirms the incident and completes the cage immediately, while the
-unattended auto-containment still runs on its own for Lobby and wall playback.
-This capability is new and licensing-gated (Microsoft Agent 365), so it is shown
-here as an illustrative, simulated step rather than a live tenant call. No live
-block API (Agent 365, Entra ID Protection for Agents, Microsoft Graph, or Azure
-ARM) is called from this frontend. Reference: Microsoft Learn, "Securing risky
-AI agents" (https://learn.microsoft.com/en-us/entra/id-protection/concept-risky-agents).
+steps that mirror the Entra ID Protection for Agents pattern. First the
+containment playbook marks CareBot as a risky agent by calling Microsoft Graph
+`POST /identityProtection/riskyAgents/confirmCompromised` (in the product this
+sets the agent's risk to High and records an admin-confirmed compromise). A
+risk-based Conditional Access policy then blocks the agent's token issuance, so
+it can no longer acquire tokens for FHIR, Graph, or Key Vault. When that
+mark-risky step runs, the app pins a "risky agent" badge next to the QR join
+card (it shows on the Agent wall panel), so the identity verdict is visible on
+the room screen. This runs automatically as part of the simulated response;
+there is no manual button. The capability is new and licensing-gated (Microsoft
+Agent 365), so it is shown here as an illustrative, simulated step rather than a
+live tenant call. No live block API (Agent 365, Entra ID Protection for Agents,
+Microsoft Graph, or Azure ARM) is called from this frontend. Reference:
+Microsoft Learn, "Securing risky AI agents"
+(https://learn.microsoft.com/en-us/entra/id-protection/concept-risky-agents).
 
 ## Source / full demo package
 
