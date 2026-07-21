@@ -728,6 +728,12 @@
     background: var(--accent); border: 0; border-radius: 12px; padding: 12px 24px; box-shadow: var(--shadow); }
   .wl-openall:hover { background: var(--accent-hover); }
   .wl-note { font-size: 12.5px; color: var(--muted); margin-top: 14px; }
+  /* Open-all pop-up outcome: highlight any panel the browser blocked + status line. */
+  .wl-status { margin-top: 14px; font-size: 13.5px; font-weight: 600; }
+  .wl-status.ok { color: var(--good); }
+  .wl-status.warn { color: var(--bad); }
+  .wl-card.wl-blocked { border-color: var(--bad); box-shadow: 0 0 0 3px rgba(196, 49, 75, .18); }
+  .wl-card.wl-blocked a.wl-open { background: var(--bad); }
   .wall-launcher kbd { background: #eef2f8; border: 1px solid var(--border); border-radius: 5px;
     padding: 1px 6px; font-size: 12px; }
 </style>
@@ -5262,7 +5268,7 @@ function renderWallLauncher() {
   const url = n => base + "?panel=" + n;
   const card = (n) => {
     const m = PANEL_META[n];
-    return '<div class="wl-card">' +
+    return '<div class="wl-card" id="wl-card-' + n + '">' +
       '<div class="wl-num">' + m.num + '</div>' +
       '<h3>' + m.title + '</h3>' +
       '<p>' + m.blurb + '</p>' +
@@ -5278,10 +5284,35 @@ function renderWallLauncher() {
       '<p>Your 48′ × 9′ wall is a 5.33:1 canvas — exactly three 16:9 tiles. Open each panel below, drag its window to its third of the wall, and press <kbd>F11</kbd> for fullscreen. Run all three on <b>this one PC</b> so they stay perfectly in sync (no network needed). Panel ① is interactive — type, or let attendees join by QR; ② and ③ mirror it live.</p>' +
       '<div class="wall-cards">' + card("1") + card("2") + card("3") + '</div>' +
       '<button class="wl-openall" id="wlOpenAll">↗ Open all three panels</button>' +
+      '<div id="wlStatus" class="wl-status" role="status" aria-live="polite" hidden></div>' +
       '<p class="wl-note">If your browser blocks pop-ups, use the three “Open panel” buttons instead. Bookmark <code>' + base + '?panel=wall</code> for one-click setup.</p>' +
     '</div>';
   document.getElementById("wlOpenAll").addEventListener("click", () => {
-    ["1", "2", "3"].forEach(n => window.open(url(n), "hubbot-panel-" + n));
+    const blocked = [];
+    ["1", "2", "3"].forEach(n => {
+      const w = window.open(url(n), "hubbot-panel-" + n);
+      const c = document.getElementById("wl-card-" + n);
+      // A blocked pop-up returns null (or an unusable proxy); a real window is truthy with .closed === false.
+      if (!w || w.closed || typeof w.closed === "undefined") {
+        blocked.push(n);
+        if (c) c.classList.add("wl-blocked");
+      } else if (c) {
+        c.classList.remove("wl-blocked");
+      }
+    });
+    const s = document.getElementById("wlStatus");
+    if (!s) return;
+    s.hidden = false;
+    if (blocked.length) {
+      const many = blocked.length > 1;
+      s.className = "wl-status warn";
+      s.textContent = "⚠️ Your browser blocked panel" + (many ? "s " : " ") + blocked.join(" & ") +
+        " as pop-ups. Click the highlighted “Open panel” button" + (many ? "s" : "") +
+        " above, or allow pop-ups for this site and press “Open all three panels” again.";
+    } else {
+      s.className = "wl-status ok";
+      s.textContent = "✅ All three panels opened. Drag each window to its third of the wall and press F11 for fullscreen.";
+    }
   });
 }
 
