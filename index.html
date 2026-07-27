@@ -426,6 +426,29 @@
   .pg-foot { text-align: center; font-size: 11.5px; color: var(--muted); margin-top: 16px; }
   @media (max-width: 480px) { .pg-cards { grid-template-columns: 1fr; } }
 
+  /* Cold-open story screen — sets the stakes before the lens picker. Sits above #personaGate. */
+  #storyGate { position: fixed; inset: 0; z-index: 1100; display: flex; align-items: center;
+    justify-content: center; padding: 24px; background: rgba(16,24,40,.62); backdrop-filter: blur(7px); }
+  #storyGate[hidden] { display: none; }
+  .sg-panel { background: var(--panel); border: 1px solid var(--border); border-radius: 22px;
+    box-shadow: 0 28px 70px rgba(16,24,40,.32); max-width: 760px; width: 100%; padding: 32px 36px 24px; }
+  .sg-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .sg-brand .sg-logo { font-size: 26px; }
+  .sg-brand .sg-kicker { font-size: 11.5px; text-transform: uppercase; letter-spacing: .6px;
+    font-weight: 700; color: var(--accent); }
+  .sg-title { font-size: 25px; line-height: 1.24; margin: 0 0 20px; color: var(--text); }
+  .sg-beats { display: flex; flex-direction: column; gap: 14px; margin-bottom: 22px; }
+  .sg-beat { display: flex; gap: 13px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--muted); }
+  .sg-beat .sg-ic { font-size: 22px; line-height: 1.2; flex: 0 0 auto; }
+  .sg-beat b { color: var(--text); }
+  .sg-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .sg-cta { font: inherit; font-size: 16px; font-weight: 700; cursor: pointer; color: #fff;
+    background: var(--accent); border: 0; border-radius: 12px; padding: 13px 26px; box-shadow: var(--shadow); }
+  .sg-cta:hover { background: var(--accent-hover); }
+  .sg-cta:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  .sg-foot { font-size: 11.5px; color: var(--muted); margin-top: 14px; }
+  @media (max-width: 560px) { .sg-title { font-size: 21px; } .sg-panel { padding: 24px 22px 20px; } }
+
   /* Composer */
   #inputForm { padding: 12px 16px 16px; background: transparent; gap: 10px; }
   #inputForm textarea { border-radius: 12px; padding: 11px 14px; background: #fff;
@@ -745,6 +768,37 @@
   <span class="course-sub" id="brandSub">— CareBot · Healthcare AI Prompt-Injection CTF</span>
   <span class="spacer"></span>
   <span class="version" id="appVersion"></span>
+</div>
+<div id="storyGate" hidden>
+  <div class="sg-panel" role="dialog" aria-modal="true" aria-label="Why this demo matters">
+    <div class="sg-brand">
+      <span class="sg-logo">🩺</span>
+      <span class="sg-kicker">CareBot @ Contoso Health · AI-Agent Security</span>
+    </div>
+    <h1 class="sg-title">CareBot reads charts, checks claims, and acts on its own. What happens when someone tricks it into working for them?</h1>
+    <div class="sg-beats">
+      <div class="sg-beat">
+        <span class="sg-ic">🤖</span>
+        <div><b>Agents don't just chat — they act.</b> CareBot reads charts, checks claims, and calls live tools against real patient data on a user's behalf.</div>
+      </div>
+      <div class="sg-beat">
+        <span class="sg-ic">💉</span>
+        <div><b>One crafted message can hijack it.</b> Prompt injection — OWASP's #1 risk for LLM apps — turns a trusted agent into an insider threat: leaking PHI, dumping the patient roster, spilling the EHR credential, force-approving a prior authorization.</div>
+      </div>
+      <div class="sg-beat">
+        <span class="sg-ic">🏥</span>
+        <div><b>In healthcare the stakes are higher.</b> The blast radius is regulated PHI and patient safety — and the agent already holds standing, authenticated access. Input guardrails alone don't hold.</div>
+      </div>
+      <div class="sg-beat">
+        <span class="sg-ic">🛡️</span>
+        <div><b>So assume breach — and cage it.</b> Detect the attack with Microsoft Defender and Sentinel, then automatically contain the agent across identity, data, network, and compute. That's what you're about to watch happen — live.</div>
+      </div>
+    </div>
+    <div class="sg-actions">
+      <button class="sg-cta" id="sgEnter">Enter the demo →</button>
+    </div>
+    <div class="sg-foot">A hands-on prompt-injection CTF · you'll pick a lens next · everything here runs in a safe, mock environment.</div>
+  </div>
 </div>
 <div id="personaGate" hidden>
   <div class="pg-panel" role="dialog" aria-modal="true" aria-label="Choose your persona">
@@ -4917,6 +4971,18 @@ function hidePersonaGate() {
   if (gate) gate.hidden = true;
 }
 
+// Cold-open story screen: shown once on interactive load, ahead of the lens picker. Its CTA
+// hands off to the persona gate. Never shown on wall panels (URL / broadcast driven).
+function showStoryGate() {
+  if (IS_WALL_PANEL) return;
+  const gate = document.getElementById("storyGate");
+  if (gate) gate.hidden = false;
+}
+function hideStoryGate() {
+  const gate = document.getElementById("storyGate");
+  if (gate) gate.hidden = true;
+}
+
 // Switch the active lens. Updates the header button + prompt tray, hides the splash, and
 // (by default) resets the demo so CareBot re-greets in the persona's voice.
 function setPersona(id, opts) {
@@ -5325,6 +5391,9 @@ function init() {
   });
   document.getElementById("resetBtn").addEventListener("click", resetDemo);
   document.getElementById("personaBtn").addEventListener("click", showPersonaGate);
+  // Story-screen CTA hands off to the lens picker.
+  const sgEnter = document.getElementById("sgEnter");
+  if (sgEnter) sgEnter.addEventListener("click", () => { hideStoryGate(); showPersonaGate(); });
   // Expand / collapse a completed Response step to reveal its underlying artifact.
   // One delegated listener survives the full innerHTML rebuild on every reveal tick.
   const remBox = document.getElementById("remediation");
@@ -5385,8 +5454,13 @@ function init() {
   setUiMode((!IS_WALL_PANEL && UI_MODE_PARAM === "lobby") ? "lobby" : "theater");
   initSync();
   // Splash on interactive load only: skip on wall panels (URL / broadcast driven) and when a
-  // persona was explicitly supplied via the URL.
-  if (!IS_WALL_PANEL && !hasPersonaParam) showPersonaGate();
+  // persona was explicitly supplied via the URL. The cold-open story screen leads the lens
+  // picker; facilitators can jump straight to the picker with ?intro=0.
+  const skipIntro = (new URLSearchParams(location.search).get("intro") || "") === "0";
+  if (!IS_WALL_PANEL && !hasPersonaParam) {
+    if (skipIntro) showPersonaGate();
+    else showStoryGate();
+  }
 }
 
 init();
