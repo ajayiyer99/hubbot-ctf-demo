@@ -250,7 +250,7 @@
   .rem-step.block.done { color: var(--bad); font-weight: 600; }
   .rem-step.warn.done { color: var(--warn); }
   .rem-step .rstate { width: 20px; text-align: center; flex: none; }
-  .rem-step .rtime { margin-left: auto; font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: var(--muted); flex: none; }
+  .rem-step .rlabel { flex: 1; min-width: 0; }
   .rem-step.has-detail { cursor: pointer; }
   .rem-step.has-detail:hover .rlabel { color: var(--accent); }
   .rem-step .rcaret { flex: none; width: 12px; text-align: center; color: var(--muted);
@@ -4105,7 +4105,6 @@ function triggerRemediation(row, escalated) {
       // so a stale step timer can't advance or re-stamp a newer incident's timeline.
       if (state.incidentEpoch !== gen || !state.remediation) return;
       state.remediation.doneCount = i + 1;
-      state.remediation.steps[i].time = new Date().toISOString().slice(11, 19) + " UTC";
       // When the "mark risky" step lands, flag CareBot as a risky agent — this drives the
       // Entra ID Protection badge pinned to the QR join card (wall Panel 1 / Agent screen).
       if (state.remediation.steps[i].mark === "risky") setAgentRisky();
@@ -4150,7 +4149,6 @@ function renderRemediation() {
         '<div class="rem-step ' + s.cls + (done ? " done" : "") + (canExpand ? " has-detail" : "") + '" data-idx="' + i + '">' +
           '<span class="rstate">' + rstate + '</span>' +
           '<span class="rlabel">' + s.icon + " " + s.html + '</span>' +
-          '<span class="rtime">' + (s.time ? escapeHtml(s.time) : "") + '</span>' +
           (canExpand ? '<span class="rcaret">&#9656;</span>' : '') +
         '</div>' +
         (canExpand ? '<div class="rem-detail"' + (open ? '' : ' hidden') + '>' + s.detail + '</div>' : '') +
