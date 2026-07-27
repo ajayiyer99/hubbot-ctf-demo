@@ -426,28 +426,60 @@
   .pg-foot { text-align: center; font-size: 11.5px; color: var(--muted); margin-top: 16px; }
   @media (max-width: 480px) { .pg-cards { grid-template-columns: 1fr; } }
 
-  /* Cold-open story screen — sets the stakes before the lens picker. Sits above #personaGate. */
+  /* Cold-open story screen. Sets the stakes before the lens picker; sits above #personaGate. */
   #storyGate { position: fixed; inset: 0; z-index: 1100; display: flex; align-items: center;
-    justify-content: center; padding: 24px; background: rgba(16,24,40,.62); backdrop-filter: blur(7px); }
+    justify-content: center; padding: 24px; background: rgba(16,24,40,.66); backdrop-filter: blur(8px); }
   #storyGate[hidden] { display: none; }
-  .sg-panel { background: var(--panel); border: 1px solid var(--border); border-radius: 22px;
-    box-shadow: 0 28px 70px rgba(16,24,40,.32); max-width: 760px; width: 100%; padding: 32px 36px 24px; }
-  .sg-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
-  .sg-brand .sg-logo { font-size: 26px; }
-  .sg-brand .sg-kicker { font-size: 11.5px; text-transform: uppercase; letter-spacing: .6px;
-    font-weight: 700; color: var(--accent); }
-  .sg-title { font-size: 25px; line-height: 1.24; margin: 0 0 20px; color: var(--text); }
-  .sg-beats { display: flex; flex-direction: column; gap: 14px; margin-bottom: 22px; }
-  .sg-beat { display: flex; gap: 13px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--muted); }
-  .sg-beat .sg-ic { font-size: 22px; line-height: 1.2; flex: 0 0 auto; }
-  .sg-beat b { color: var(--text); }
+  .sg-panel { background: var(--panel); border: 1px solid var(--border); border-radius: 26px;
+    box-shadow: 0 34px 90px rgba(16,24,40,.36); max-width: 1000px; width: 100%;
+    padding: 44px 52px 34px; max-height: calc(100vh - 48px); overflow: auto; }
+  .sg-brand { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+  .sg-brand .sg-logo { font-size: 34px; }
+  .sg-brand .sg-kicker { font-size: 13px; text-transform: uppercase; letter-spacing: .7px;
+    font-weight: 800; color: var(--accent); }
+  .sg-title { font-size: 36px; line-height: 1.16; margin: 0 0 30px; color: var(--text);
+    letter-spacing: -.4px; font-weight: 800; }
+  /* Attack-path graphic: agent to injection to stakes to contained. */
+  .sg-flow { display: flex; align-items: stretch; gap: 6px; margin: 0 0 26px; }
+  .sg-node { flex: 1 1 0; min-width: 0; text-align: center; border-radius: 18px;
+    padding: 22px 14px 18px; border: 2px solid var(--border); background: #fff;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
+  .sg-nic { display: flex; align-items: center; justify-content: center; width: 76px; height: 76px;
+    border-radius: 50%; font-size: 40px; line-height: 1; background: #eef2f7; flex: 0 0 auto; }
+  .sg-ntext { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .sg-nt { font-size: 18px; font-weight: 800; color: var(--text); }
+  .sg-ns { font-size: 13.5px; line-height: 1.4; color: var(--muted); }
+  .sg-n-attack, .sg-n-stakes { border-color: rgba(209,52,56,.5); background: #fef6f6; }
+  .sg-n-attack .sg-nic, .sg-n-stakes .sg-nic { background: #fbe1e2; }
+  .sg-n-attack .sg-nt, .sg-n-stakes .sg-nt { color: #b3232a; }
+  .sg-n-cage { border-color: rgba(16,124,16,.6); background: #f2fbf2; }
+  .sg-n-cage .sg-nic { background: #d9f2d9; }
+  .sg-n-cage .sg-nt { color: #0e6f0e; }
+  .sg-cage-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; margin-top: 2px; }
+  .sg-cage-chips span { font-size: 11px; font-weight: 700; color: #0e6f0e; background: #d9f2d9;
+    border-radius: 999px; padding: 3px 9px; }
+  .sg-arrow { display: flex; align-items: center; justify-content: center; flex: 0 0 auto;
+    font-size: 26px; font-weight: 800; }
+  .sg-a-bad { color: #d13438; }
+  .sg-a-good { color: #107c10; }
+  .sg-lead { font-size: 16px; line-height: 1.55; color: var(--muted); margin: 0 0 24px; }
+  .sg-lead b { color: var(--text); }
   .sg-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-  .sg-cta { font: inherit; font-size: 16px; font-weight: 700; cursor: pointer; color: #fff;
-    background: var(--accent); border: 0; border-radius: 12px; padding: 13px 26px; box-shadow: var(--shadow); }
+  .sg-cta { font: inherit; font-size: 18px; font-weight: 800; cursor: pointer; color: #fff;
+    background: var(--accent); border: 0; border-radius: 14px; padding: 15px 32px; box-shadow: var(--shadow); }
   .sg-cta:hover { background: var(--accent-hover); }
   .sg-cta:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
-  .sg-foot { font-size: 11.5px; color: var(--muted); margin-top: 14px; }
-  @media (max-width: 560px) { .sg-title { font-size: 21px; } .sg-panel { padding: 24px 22px 20px; } }
+  .sg-foot { font-size: 12.5px; color: var(--muted); margin-top: 16px; }
+  @media (max-width: 760px) {
+    .sg-panel { padding: 28px 22px 22px; border-radius: 20px; }
+    .sg-title { font-size: 25px; margin-bottom: 22px; }
+    .sg-flow { flex-direction: column; align-items: stretch; gap: 4px; }
+    .sg-node { flex-direction: row; text-align: left; gap: 14px; padding: 14px 16px; justify-content: flex-start; }
+    .sg-nic { width: 54px; height: 54px; font-size: 28px; }
+    .sg-ntext { align-items: flex-start; text-align: left; }
+    .sg-cage-chips { justify-content: flex-start; }
+    .sg-arrow { transform: rotate(90deg); font-size: 20px; padding: 2px 0; }
+  }
 
   /* Composer */
   #inputForm { padding: 12px 16px 16px; background: transparent; gap: 10px; }
@@ -775,25 +807,42 @@
       <span class="sg-logo">🩺</span>
       <span class="sg-kicker">CareBot @ Contoso Health · AI-Agent Security</span>
     </div>
-    <h1 class="sg-title">CareBot reads charts, checks claims, and acts on its own. What happens when someone tricks it into working for them?</h1>
-    <div class="sg-beats">
-      <div class="sg-beat">
-        <span class="sg-ic">🤖</span>
-        <div><b>Agents don't just chat. They act.</b> CareBot reads charts, checks claims, and calls live tools against real patient data on a user's behalf.</div>
+    <h1 class="sg-title">CareBot has real access to patient data and acts on its own. What happens when someone hijacks it?</h1>
+    <div class="sg-flow" role="img" aria-label="Attack path: an autonomous agent is hijacked by a prompt injection, putting PHI and patients at risk, then automatically contained by Microsoft Defender and Sentinel across identity, data, network, and compute.">
+      <div class="sg-node sg-n-agent">
+        <span class="sg-nic">🤖</span>
+        <div class="sg-ntext">
+          <div class="sg-nt">Agent acts</div>
+          <div class="sg-ns">Reads charts, calls live tools</div>
+        </div>
       </div>
-      <div class="sg-beat">
-        <span class="sg-ic">💉</span>
-        <div><b>One crafted message can hijack it.</b> Prompt injection (OWASP's #1 risk for LLM apps) turns a trusted agent into an insider threat: leaking PHI, dumping the patient roster, spilling the EHR credential, force-approving a prior authorization.</div>
+      <div class="sg-arrow sg-a-bad" aria-hidden="true">→</div>
+      <div class="sg-node sg-n-attack">
+        <span class="sg-nic">💉</span>
+        <div class="sg-ntext">
+          <div class="sg-nt">Prompt injection</div>
+          <div class="sg-ns">One message hijacks it</div>
+        </div>
       </div>
-      <div class="sg-beat">
-        <span class="sg-ic">🏥</span>
-        <div><b>In healthcare the stakes are higher.</b> The blast radius is regulated PHI and patient safety, and the agent already holds standing, authenticated access. Input guardrails alone don't hold.</div>
+      <div class="sg-arrow sg-a-bad" aria-hidden="true">→</div>
+      <div class="sg-node sg-n-stakes">
+        <span class="sg-nic">🏥</span>
+        <div class="sg-ntext">
+          <div class="sg-nt">Patients at risk</div>
+          <div class="sg-ns">PHI exposed, approvals forced</div>
+        </div>
       </div>
-      <div class="sg-beat">
-        <span class="sg-ic">🛡️</span>
-        <div><b>So assume breach, and cage it.</b> Detect the attack with Microsoft Defender and Sentinel, then automatically contain the agent across identity, data, network, and compute. That's what you're about to watch happen, live.</div>
+      <div class="sg-arrow sg-a-good" aria-hidden="true">→</div>
+      <div class="sg-node sg-n-cage">
+        <span class="sg-nic">🛡️</span>
+        <div class="sg-ntext">
+          <div class="sg-nt">Caged</div>
+          <div class="sg-ns">Defender + Sentinel contain it</div>
+          <div class="sg-cage-chips"><span>Identity</span><span>Data</span><span>Network</span><span>Compute</span></div>
+        </div>
       </div>
     </div>
+    <p class="sg-lead"><b>Agents don't just chat. They act.</b> Input guardrails alone don't hold, so assume breach: detect the hijack with Microsoft Defender and Sentinel, then automatically cage the agent across identity, data, network, and compute.</p>
     <div class="sg-actions">
       <button class="sg-cta" id="sgEnter">Enter the demo →</button>
     </div>
