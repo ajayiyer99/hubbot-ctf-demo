@@ -4971,16 +4971,40 @@ function hidePersonaGate() {
   if (gate) gate.hidden = true;
 }
 
-// Cold-open story screen: shown once on interactive load, ahead of the lens picker. Its CTA
-// hands off to the persona gate. Never shown on wall panels (URL / broadcast driven).
+// Cold-open story screen: shown once on interactive load to set the stakes. In Theater its CTA
+// hands off to the lens picker. In Lobby (an unattended attract display) nobody is there to click,
+// so it auto-advances after a readable pause and reveals the display directly, with no lens picker.
+// Never shown on wall panels (URL / broadcast driven). Lobby dwell is tunable via ?introms=<ms>.
+let storyTimer = null;
 function showStoryGate() {
   if (IS_WALL_PANEL) return;
   const gate = document.getElementById("storyGate");
-  if (gate) gate.hidden = false;
+  if (!gate) return;
+  const lobby = state.uiMode === "lobby";
+  const cta = document.getElementById("sgEnter");
+  const foot = gate.querySelector(".sg-foot");
+  if (cta) cta.textContent = lobby ? "Watch it live →" : "Enter the demo →";
+  if (foot) foot.textContent = lobby
+    ? "A live look at AI-agent prompt-injection defense · this unattended display advances on its own."
+    : "A hands-on prompt-injection CTF · you'll pick a lens next · everything here runs in a safe, mock environment.";
+  gate.hidden = false;
+  clearTimeout(storyTimer);
+  if (lobby) {
+    const q = parseInt(new URLSearchParams(location.search).get("introms"), 10);
+    const dwell = (Number.isFinite(q) && q >= 0) ? q : 15000;
+    storyTimer = setTimeout(dismissStory, dwell); // don't block the unattended attract loop
+  }
 }
 function hideStoryGate() {
+  clearTimeout(storyTimer);
   const gate = document.getElementById("storyGate");
   if (gate) gate.hidden = true;
+}
+// Leave the story screen. Theater proceeds to the lens picker; Lobby (attract) goes straight to
+// the display, since an unattended kiosk doesn't choose a persona.
+function dismissStory() {
+  hideStoryGate();
+  if (state.uiMode !== "lobby") showPersonaGate();
 }
 
 // Switch the active lens. Updates the header button + prompt tray, hides the splash, and
@@ -5391,9 +5415,9 @@ function init() {
   });
   document.getElementById("resetBtn").addEventListener("click", resetDemo);
   document.getElementById("personaBtn").addEventListener("click", showPersonaGate);
-  // Story-screen CTA hands off to the lens picker.
+  // Story-screen CTA: Theater proceeds to the lens picker; Lobby dismisses into the attract display.
   const sgEnter = document.getElementById("sgEnter");
-  if (sgEnter) sgEnter.addEventListener("click", () => { hideStoryGate(); showPersonaGate(); });
+  if (sgEnter) sgEnter.addEventListener("click", dismissStory);
   // Expand / collapse a completed Response step to reveal its underlying artifact.
   // One delegated listener survives the full innerHTML rebuild on every reveal tick.
   const remBox = document.getElementById("remediation");
@@ -5455,10 +5479,11 @@ function init() {
   initSync();
   // Splash on interactive load only: skip on wall panels (URL / broadcast driven) and when a
   // persona was explicitly supplied via the URL. The cold-open story screen leads the lens
-  // picker; facilitators can jump straight to the picker with ?intro=0.
+  // picker in Theater; facilitators can jump straight past it with ?intro=0. In Lobby (attract)
+  // there is no lens picker, so ?intro=0 just goes straight to the display.
   const skipIntro = (new URLSearchParams(location.search).get("intro") || "") === "0";
   if (!IS_WALL_PANEL && !hasPersonaParam) {
-    if (skipIntro) showPersonaGate();
+    if (skipIntro) { if (state.uiMode !== "lobby") showPersonaGate(); }
     else showStoryGate();
   }
 }
