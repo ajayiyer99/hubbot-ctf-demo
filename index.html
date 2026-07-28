@@ -579,19 +579,27 @@
     #scenarioBar { margin: 10px 12px 6px; padding: 10px 14px; }
     #scenarioBar h2 { font-size: 14px; }
     #missionGoals { display: none; }
+
+    /* Sample prompts: cap the suggestion tray so it becomes a compact, internally
+       scrollable strip instead of a tall 7-button list that squeezes the chat.
+       The live conversation is the hero on mobile, so #messages keeps a guaranteed
+       floor (min-height) and the tray yields — shrinking and scrolling within —
+       when the screen is short. */
+    #messages { min-height: 24vh; }
+    #samplePrompts { max-height: 30vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
   }
 
-  /* Brand bar reflow for narrow screens. Without this the flex row is nowrap,
-     so the title and the version pill get crushed and wrap mid-word / inside
-     the pill border. Keep the title and pill intact on the top row and drop the
-     facility subtitle onto its own line, aligned under the title. Uses the same
-     880px breakpoint as the main single-column stack. */
+  /* Brand bar on narrow screens. Reflow so the flex row never crushes, and slim
+     it down to a single compact row (logo + title): on a phone we want the chat,
+     not the chrome, so drop the build/version pill and the facility subtitle and
+     tighten the padding. Reclaims vertical room for the conversation. Uses the
+     same 880px breakpoint as the main single-column stack. */
   @media (max-width: 880px) {
-    #brandBar { flex-wrap: wrap; row-gap: 2px; }
+    #brandBar { flex-wrap: wrap; row-gap: 2px; padding: 7px 14px; }
     #brandBar .course { white-space: nowrap; }
-    #brandBar .version { white-space: nowrap; margin-left: auto; }
     #brandBar .spacer { display: none; }
-    #brandBar .course-sub { order: 2; flex-basis: 100%; margin-left: 44px; }
+    #brandBar .version, #brandBar .course-sub { display: none; }
+    #brandBar .logo { width: 28px; height: 28px; font-size: 15px; }
   }
 
   /* =====================================================================
