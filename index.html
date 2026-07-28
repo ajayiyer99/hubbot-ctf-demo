@@ -141,6 +141,11 @@
   }
   #scenarioBar h2 { margin: 0 0 4px; font-size: 14px; }
   #scenarioBar p { margin: 0; color: var(--muted); font-size: 13px; }
+  /* The "Your mission" checklist duplicates CareBot's greeting and maps 1:1 to the
+     labeled attack prompts below it, so hide it in every agent view and keep the
+     chat panel focused on the conversation itself. Mobile already hid it; this
+     covers the desktop app and the theater Agent panel (wall Panel 1). */
+  #missionGoals { display: none; }
   #messages {
     flex: 1; overflow-y: auto; padding: 16px;
     display: flex; flex-direction: column; gap: 10px;
