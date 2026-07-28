@@ -546,12 +546,26 @@
   .join-safe { margin: 12px auto 0; max-width: 380px; }
   #joinDialog .row { justify-content: center; }
 
-  /* Stack on small / touch screens */
+  /* Stack on small / touch screens.
+     Mobile is the attendee's own phone, and the expectation is that it's used
+     primarily for the CareBot chat (the agent experience). So we keep the chat
+     front and center and strip the "other noise": the facilitator chrome in the
+     header and the SOC analyst detail in the Security Monitor. That defense
+     story is told on the room's big screen; on the phone we keep only a slim
+     CareBot status strip plus the "you cracked it" win banner as the payoff. */
   @media (max-width: 880px) {
-    main { grid-template-columns: 1fr; grid-template-rows: minmax(0,1.2fr) minmax(0,1fr); }
+    main { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
     #chatPanel { border-right: none; border-bottom: 1px solid var(--border); }
     .msg { max-width: 88%; }
-    #joinCard, #joinBtn { display: none; }
+
+    /* Header: drop everything except the persona (lens) switcher. */
+    #modeSeg, #hubPill, #enginePill,
+    #wallBtn, #joinBtn, #resetBtn, #settingsBtn, #helpBtn { display: none; }
+
+    /* Security Monitor: hide the SOC detail, keep agent status + win banner. */
+    #joinCard, #signalFlow,
+    #sentinelSection, #soarSection, #facilitatorSection { display: none; }
+    #inspector { overflow: visible; }
   }
 
   /* Brand bar reflow for narrow screens. Without this the flex row is nowrap,
