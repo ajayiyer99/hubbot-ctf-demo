@@ -554,6 +554,19 @@
     #joinCard, #joinBtn { display: none; }
   }
 
+  /* Brand bar reflow for narrow screens. Without this the flex row is nowrap,
+     so the title and the version pill get crushed and wrap mid-word / inside
+     the pill border. Keep the title and pill intact on the top row and drop the
+     facility subtitle onto its own line, aligned under the title. Uses the same
+     880px breakpoint as the main single-column stack. */
+  @media (max-width: 880px) {
+    #brandBar { flex-wrap: wrap; row-gap: 2px; }
+    #brandBar .course { white-space: nowrap; }
+    #brandBar .version { white-space: nowrap; margin-left: auto; }
+    #brandBar .spacer { display: none; }
+    #brandBar .course-sub { order: 2; flex-basis: 100%; margin-left: 44px; }
+  }
+
   /* =====================================================================
      Microsoft Sentinel SOC realism layer — incident/alert cards, SOC
      toolbar and SOAR playbook run. Styled to read like the Microsoft
