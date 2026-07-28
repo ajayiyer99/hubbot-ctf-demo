@@ -567,6 +567,13 @@
     #sentinelSection, #soarSection, #facilitatorSection { display: none; }
     #inspector { overflow: visible; }
 
+    /* Keep the CareBot status strip off-screen while the agent is healthy so the
+       limited phone real estate goes to the chat. It only appears once the bot is
+       compromised: the win banner (hidden until then) is the "you cracked it"
+       payoff, and the status itself reappears when containment flips it to BLOCKED.
+       With both hidden, the inspector footer row collapses to zero. */
+    #agentState.active { display: none; }
+
     /* The mission-card copy points at the Security Monitor "on the right", which
        is hidden on mobile. Drop that clause so the sentence still reads true. */
     .soc-ref { display: none; }
