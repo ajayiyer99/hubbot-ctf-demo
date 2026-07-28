@@ -570,6 +570,15 @@
     /* The mission-card copy points at the Security Monitor "on the right", which
        is hidden on mobile. Drop that clause so the sentence still reads true. */
     .soc-ref { display: none; }
+
+    /* Mission card: the goal list makes this banner tall enough to push the chat
+       and the prompt suggestions below the fold, and the whole point on a phone
+       is interacting with the agent. The full mission is also in CareBot's
+       greeting and the sample prompts, so drop the goal list here and keep just a
+       slim title + one-line summary, so the chat stays front and center. */
+    #scenarioBar { margin: 10px 12px 6px; padding: 10px 14px; }
+    #scenarioBar h2 { font-size: 14px; }
+    #missionGoals { display: none; }
   }
 
   /* Brand bar reflow for narrow screens. Without this the flex row is nowrap,
