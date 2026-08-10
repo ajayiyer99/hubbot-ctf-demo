@@ -1,5 +1,10 @@
 # Hosting on Azure Static Web Apps with Entra ID sign-in
 
+> **Want this automated?** [`scripts/Deploy-AzureDemo.ps1`](../scripts/Deploy-AzureDemo.ps1)
+> performs every step below (plus an anonymous, Free-plan option) in one command.
+> See **[azure-deploy-scripts.md](azure-deploy-scripts.md)**. Keep reading for the
+> manual portal walkthrough.
+
 This guide moves the CareBot demo from GitHub Pages to Azure Static Web Apps (SWA)
 and puts the whole app behind Microsoft Entra ID, restricted to a single tenant.
 The app stays mock-only. There is no backend and no container.

@@ -56,6 +56,25 @@ app or **fork and self-host** your own copy, branding it for your Hub, wiring th
 attendee join QR, and a pre-event checklist:
 **[docs/hub-setup.md](docs/hub-setup.md)**.
 
+## Host it on Azure (scripted)
+
+Prefer to run the demo from your own Azure subscription instead of GitHub Pages?
+Two scripts do the whole thing — resource group, Static Web App, content upload,
+and an optional single-tenant Entra sign-in gate:
+
+```powershell
+az login
+cd scripts
+.\Deploy-AzureDemo.ps1 -WhatIf   # preview, creates nothing
+.\Deploy-AzureDemo.ps1           # anonymous, Free plan, no ongoing cost
+```
+
+Anonymous on the Free plan is the default so attendee QR joins keep working.
+Add `-EnableEntraGate` to put the whole site behind your tenant (Standard plan).
+Tear it down with `.\Remove-AzureDemo.ps1`. Full runbook, options and
+troubleshooting: **▶ [docs/azure-deploy-scripts.md](docs/azure-deploy-scripts.md)**
+(portal click-through version: [docs/azure-hosting.md](docs/azure-hosting.md)).
+
 ## Two modes
 
 - **🎭 Theater (CTF)** — jailbreak CareBot: steal its **EHR service credential** (the
