@@ -75,6 +75,17 @@
 .PARAMETER SkipContentDeploy
     Provision the Azure resources but do not upload the site content.
 
+.PARAMETER UploadMethod
+    How to publish the site content:
+      Native (default) - downloads Microsoft's StaticSitesClient binary, the same
+                         native uploader the Static Web Apps CLI drives under the
+                         hood. Needs no Node.js. Cached after the first run.
+      SwaCli           - runs the Static Web Apps CLI through npx. Needs Node.js.
+
+.PARAMETER StaticSitesClientPath
+    Path to an already-downloaded StaticSitesClient binary. Use this on locked
+    down or offline machines: download it once elsewhere and point at the copy.
+
 .EXAMPLE
     # Preview everything without creating a single resource
     .\Deploy-AzureDemo.ps1 -WhatIf
@@ -92,7 +103,7 @@
     .\Deploy-AzureDemo.ps1 -ResourceGroup rg-carebot-stl -Name carebot-ctf-stl
 
 .NOTES
-    Prerequisites : Azure CLI (az login), Node.js (for the content upload only).
+    Prerequisites : Azure CLI (az login). Node.js is NOT required.
     Teardown      : .\Remove-AzureDemo.ps1 -ResourceGroup <rg>
     Runbook       : docs/azure-deploy-scripts.md
     Public source : https://github.com/ajayiyer99/hubbot-ctf-demo
@@ -111,7 +122,10 @@ param(
     [switch]$RotateSecret,
     [string]$SubscriptionId,
     [string]$SourcePath,
-    [switch]$SkipContentDeploy
+    [switch]$SkipContentDeploy,
+    [ValidateSet('Native', 'SwaCli')]
+    [string]$UploadMethod = 'Native',
+    [string]$StaticSitesClientPath
 )
 
 $ErrorActionPreference = 'Stop'
@@ -125,12 +139,123 @@ function Write-Warn2 ([string]$m) { Write-Host "    [warn] $m" -ForegroundColor 
 # to stderr, so we surface those rather than swallowing them.
 function Invoke-Az {
     param([Parameter(Mandatory)][string[]]$AzArgs, [switch]$AllowFail)
-    $out = & az @AzArgs 2>&1
+    # Windows PowerShell 5.1 converts a native command's stderr into ErrorRecords.
+    # With ErrorActionPreference=Stop that becomes a terminating NativeCommandError
+    # before we ever reach the $LASTEXITCODE check, which would defeat -AllowFail
+    # and surface a raw az stack trace. Relax it just around the call.
+    $prevEap = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try { $out = & az @AzArgs 2>&1 }
+    finally { $ErrorActionPreference = $prevEap }
     if ($LASTEXITCODE -ne 0) {
         if ($AllowFail) { return $null }
         throw ("az {0} failed:`n{1}" -f ($AzArgs -join ' '), ($out | Out-String).Trim())
     }
     return ($out | Out-String).Trim()
+}
+
+# True on Windows. $IsWindows only exists in PowerShell 6+, and its absence means
+# we are on Windows PowerShell 5.1, which is Windows by definition.
+function Test-IsWindows {
+    if ($null -eq $IsWindows) { return $true }
+    return [bool]$IsWindows
+}
+
+<#
+Runs a native executable and returns its exit code.
+
+Windows PowerShell 5.1 turns anything a native process writes to stderr into an
+ErrorRecord, and with ErrorActionPreference=Stop that is a terminating
+NativeCommandError even when the process succeeds. StaticSitesClient and npx both
+log to stderr, so every native call has to be made with the preference relaxed and
+judged on its exit code instead.
+#>
+function Invoke-NativeCommand {
+    param(
+        [Parameter(Mandatory)][string]$FilePath,
+        [Parameter(Mandatory)][string[]]$CommandArgs
+    )
+    $prevEap = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        & $FilePath @CommandArgs 2>&1 | ForEach-Object { Write-Host "    $_" -ForegroundColor DarkGray }
+        return $LASTEXITCODE
+    }
+    finally { $ErrorActionPreference = $prevEap }
+}
+
+<#
+Fetches Microsoft's StaticSitesClient, the native uploader that the Static Web
+Apps CLI downloads and drives internally. Going straight to it means the whole
+deployment needs no Node.js, npm or npx.
+
+The published manifest carries a SHA256 for every platform build, so the download
+is verified before we ever execute it. Binaries are cached per build id under
+LOCALAPPDATA, so only the first run pays the download.
+#>
+function Get-StaticSitesClient {
+    [CmdletBinding()]
+    param([string]$Channel = 'stable')
+
+    $manifestUrl = 'https://swalocaldeploy.azureedge.net/downloads/versions.json'
+
+    if (Test-IsWindows) { $key = 'win-x64'; $leaf = 'StaticSitesClient.exe' }
+    elseif ($IsMacOS)   { $key = 'osx-x64'; $leaf = 'StaticSitesClient' }
+    else                { $key = 'linux-x64'; $leaf = 'StaticSitesClient' }
+
+    Write-Note "Resolving StaticSitesClient ($Channel, $key)..."
+    try {
+        $resp = Invoke-WebRequest -Uri $manifestUrl -UseBasicParsing -TimeoutSec 60
+    }
+    catch {
+        throw ("Could not reach the StaticSitesClient manifest ($manifestUrl): {0}. " -f $_.Exception.Message) +
+        'Check outbound internet or a proxy, or re-run with -UploadMethod SwaCli, or pass -StaticSitesClientPath.'
+    }
+
+    # Invoke-WebRequest -UseBasicParsing returns bytes here, so decode explicitly.
+    $raw = if ($resp.Content -is [byte[]]) { [Text.Encoding]::UTF8.GetString($resp.Content) } else { [string]$resp.Content }
+    $entry = ($raw | ConvertFrom-Json) | Where-Object { $_.version -eq $Channel } | Select-Object -First 1
+    if (-not $entry) { throw "Channel '$Channel' not found in the StaticSitesClient manifest." }
+
+    $file = $entry.files.$key
+    if (-not $file -or -not $file.url) { throw "No StaticSitesClient build published for platform '$key'." }
+
+    $root = if (Test-IsWindows) { $env:LOCALAPPDATA } else { Join-Path $HOME '.cache' }
+    $cacheDir = Join-Path (Join-Path $root 'CareBotDeploy') $entry.buildId
+    $exePath = Join-Path $cacheDir $leaf
+
+    if (Test-Path $exePath) {
+        $have = (Get-FileHash $exePath -Algorithm SHA256).Hash.ToLower()
+        if ($have -eq $file.sha.ToLower()) {
+            Write-Ok "StaticSitesClient found in cache (build $($entry.buildId.Substring(0,8)))."
+            return $exePath
+        }
+        Write-Warn2 'Cached StaticSitesClient failed its checksum; downloading a fresh copy.'
+        Remove-Item $exePath -Force -ErrorAction SilentlyContinue
+    }
+
+    New-Item -ItemType Directory -Path $cacheDir -Force | Out-Null
+    Write-Note 'Downloading StaticSitesClient (about 70 MB, one time)...'
+    $tmp = "$exePath.download"
+    try {
+        $prev = $ProgressPreference
+        $ProgressPreference = 'SilentlyContinue'   # a progress bar makes this far slower
+        try { Invoke-WebRequest -Uri $file.url -OutFile $tmp -UseBasicParsing -TimeoutSec 600 }
+        finally { $ProgressPreference = $prev }
+
+        # Never execute an unverified binary.
+        $actual = (Get-FileHash $tmp -Algorithm SHA256).Hash.ToLower()
+        if ($actual -ne $file.sha.ToLower()) {
+            throw "Checksum mismatch for StaticSitesClient. Expected $($file.sha), got $actual. Refusing to run it."
+        }
+        Move-Item $tmp $exePath -Force
+        if (-not (Test-IsWindows)) { & chmod +x $exePath }
+        Write-Ok ("StaticSitesClient verified and cached ({0:N0} MB)." -f ((Get-Item $exePath).Length / 1MB))
+        return $exePath
+    }
+    finally {
+        Remove-Item $tmp -Force -ErrorAction SilentlyContinue
+    }
 }
 
 Write-Host ''
@@ -167,8 +292,25 @@ if (-not (Test-Path $indexPath)) {
 }
 Write-Ok "Content source: $SourcePath"
 
-if (-not $SkipContentDeploy -and -not (Get-Command node -ErrorAction SilentlyContinue)) {
-    throw 'Node.js not found; it is required to upload content via the Static Web Apps CLI. Install it from https://nodejs.org, or re-run with -SkipContentDeploy.'
+if (-not $SkipContentDeploy) {
+    if ($StaticSitesClientPath) {
+        if (-not (Test-Path $StaticSitesClientPath)) {
+            throw "StaticSitesClient not found at '$StaticSitesClientPath'."
+        }
+        $StaticSitesClientPath = (Resolve-Path $StaticSitesClientPath).Path
+        $UploadMethod = 'Native'
+        Write-Ok "Upload method: Native (using the copy you supplied)."
+    }
+    elseif ($UploadMethod -eq 'SwaCli') {
+        # Only this opt-in path needs Node.js.
+        if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
+            throw 'Node.js not found, and -UploadMethod SwaCli requires it. Drop that switch to use the default Native uploader instead, which needs no Node.js.'
+        }
+        Write-Ok 'Upload method: Static Web Apps CLI via npx (Node.js found).'
+    }
+    else {
+        Write-Ok 'Upload method: Native StaticSitesClient (no Node.js required).'
+    }
 }
 
 # The Entra gate needs a custom identity provider, which is a Standard plan feature.
@@ -187,13 +329,38 @@ else {
 
 # Pick a name on first run. SWA hostnames are derived from the name, so we add a
 # short suffix to avoid collisions with other people running this same script.
-# A Forbidden here means the account cannot read resource groups at all, so fail
-# with something actionable instead of a raw error later on.
+# A Forbidden here means the account cannot read resource groups in this
+# subscription, which is common when the default subscription is policy-locked.
+# Rather than just failing, probe the other subscriptions and name the usable ones.
 $rgProbe = Invoke-Az @('group', 'exists', '-n', $ResourceGroup) -AllowFail
 if ($null -eq $rgProbe) {
-    throw ("Cannot query resource groups in subscription '{0}' ({1}). " -f $account.name, $account.id) +
-    'The signed-in account most likely lacks Contributor rights there, or the subscription is policy-locked. ' +
-    'Run "az account list -o table" to see what else you can use, then re-run with -SubscriptionId <id>.'
+    Write-Host ''
+    Write-Warn2 ("Cannot query resource groups in '{0}' ({1})." -f $account.name, $account.id)
+    Write-Note 'That usually means the account lacks Contributor rights there, or the subscription is policy-locked.'
+    Write-Note 'Checking your other subscriptions for one you can deploy into...'
+
+    $usable = @()
+    $subsJson = Invoke-Az @('account', 'list', '--query', '[?state==`Enabled`].{name:name,id:id}', '-o', 'json') -AllowFail
+    if ($subsJson) {
+        foreach ($s in ($subsJson | ConvertFrom-Json)) {
+            if ($s.id -eq $account.id) { continue }
+            $probe = Invoke-Az @('group', 'exists', '-n', $ResourceGroup, '--subscription', $s.id) -AllowFail
+            if ($null -ne $probe) { $usable += $s }
+        }
+    }
+
+    Write-Host ''
+    if ($usable.Count -gt 0) {
+        Write-Host '  Subscriptions you can deploy into:' -ForegroundColor White
+        foreach ($s in $usable) { Write-Host ("    {0}`n      {1}" -f $s.name, $s.id) }
+        Write-Host ''
+        throw ("Re-run and pick one, for example:`n" +
+            "  .\Deploy-AzureDemo.ps1 -SubscriptionId {0}" -f $usable[0].id)
+    }
+    throw ("No subscription on this account can create resource groups. " +
+        "Ask for the Contributor role on a subscription (an Azure free trial or " +
+        "Visual Studio benefit subscription also works), then re-run with " +
+        "-SubscriptionId <id>. Run 'az account list -o table' to see them all.")
 }
 $rgExists = $rgProbe -eq 'true'
 if (-not $Name) {
@@ -373,16 +540,53 @@ if (-not $SkipContentDeploy) {
         }
 
         # --- Upload ----------------------------------------------------------
-        Write-Step 'Uploading content via the Static Web Apps CLI'
+        Write-Step 'Uploading content'
         if ($PSCmdlet.ShouldProcess($Name, 'Deploy site content')) {
             $token = Invoke-Az @('staticwebapp', 'secrets', 'list', '-n', $Name, '-g', $ResourceGroup,
                 '--query', 'properties.apiKey', '-o', 'tsv')
             if (-not $token) { throw 'Could not read the deployment token.' }
-            Write-Note 'Running: npx @azure/static-web-apps-cli deploy (first run downloads the CLI)'
-            & npx --yes '@azure/static-web-apps-cli@latest' deploy $staging `
-                --deployment-token $token --env production
-            if ($LASTEXITCODE -ne 0) {
-                throw "Static Web Apps CLI deploy failed with exit code $LASTEXITCODE."
+
+            if ($UploadMethod -eq 'SwaCli') {
+                Write-Note 'Running: npx @azure/static-web-apps-cli deploy (first run downloads the CLI)'
+                $npx = (Get-Command npx -ErrorAction Stop).Source
+                $code = Invoke-NativeCommand -FilePath $npx -CommandArgs @(
+                    '--yes', '@azure/static-web-apps-cli@latest', 'deploy', $staging,
+                    '--deployment-token', $token, '--env', 'production')
+                if ($code -ne 0) {
+                    throw "Static Web Apps CLI deploy failed with exit code $code."
+                }
+            }
+            else {
+                # StaticSitesClient is the native uploader the Static Web Apps CLI
+                # drives internally, so calling it directly skips Node entirely.
+                $client = $StaticSitesClientPath
+                if (-not $client) { $client = Get-StaticSitesClient }
+
+                # It reads the token and the deployment context from the environment.
+                $prevToken = $env:DEPLOYMENT_TOKEN
+                $prevProvider = $env:DEPLOYMENT_PROVIDER
+                $prevAction = $env:DEPLOYMENT_ACTION
+                $env:DEPLOYMENT_TOKEN = $token
+                $env:DEPLOYMENT_PROVIDER = 'CareBotDeployScript'
+                $env:DEPLOYMENT_ACTION = 'upload'
+                try {
+                    # --skipAppBuild: the demo is a single prebuilt HTML file, so
+                    # there is nothing for Oryx to build.
+                    $code = Invoke-NativeCommand -FilePath $client -CommandArgs @(
+                        'upload',
+                        '--app', $staging,
+                        '--apiToken', $token,
+                        '--skipAppBuild', 'true',
+                        '--verbose', 'false')
+                    if ($code -ne 0) {
+                        throw "StaticSitesClient upload failed with exit code $code."
+                    }
+                }
+                finally {
+                    $env:DEPLOYMENT_TOKEN = $prevToken
+                    $env:DEPLOYMENT_PROVIDER = $prevProvider
+                    $env:DEPLOYMENT_ACTION = $prevAction
+                }
             }
             Write-Ok 'Content deployed.'
         }

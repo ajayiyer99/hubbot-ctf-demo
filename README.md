@@ -71,8 +71,9 @@ cd scripts
 
 Anonymous on the Free plan is the default so attendee QR joins keep working.
 Add `-EnableEntraGate` to put the whole site behind your tenant (Standard plan).
-Tear it down with `.\Remove-AzureDemo.ps1`. Full runbook, options and
-troubleshooting: **▶ [docs/azure-deploy-scripts.md](docs/azure-deploy-scripts.md)**
+Only the Azure CLI is required, no Node.js. Tear it down with
+`.\Remove-AzureDemo.ps1`. Full runbook, options and troubleshooting:
+**▶ [docs/azure-deploy-scripts.md](docs/azure-deploy-scripts.md)**
 (portal click-through version: [docs/azure-hosting.md](docs/azure-hosting.md)).
 
 ## Two modes
