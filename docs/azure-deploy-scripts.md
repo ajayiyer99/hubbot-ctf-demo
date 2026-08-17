@@ -47,15 +47,20 @@ That is the entire footprint. The demo is a static, mock-only single page app:
 no backend, no database, no container, no Azure OpenAI resource. Every Sentinel
 incident, Defender alert and SOAR playbook step you see on screen is simulated
 in the browser.
-
 ## Prerequisites
 
 - **Azure CLI** — <https://aka.ms/installazurecli>, then `az login`.
-- **Contributor** on the target subscription. If the account cannot read
-  resource groups the script stops early and tells you to pick another
-  subscription with `-SubscriptionId`.
-- **Node.js** — <https://nodejs.org>. Used only to run the Static Web Apps CLI
-  that uploads the content. Skip it with `-SkipContentDeploy`.
+- **Contributor** on the target subscription. If the account cannot create
+  resource groups, the script probes your other subscriptions and prints the
+  ones that do work, so you can re-run with `-SubscriptionId`.
+
+**Node.js is not required.** The script publishes with `StaticSitesClient`,
+Microsoft's native uploader — the same binary the Static Web Apps CLI downloads
+and drives under the hood. It is fetched on first use (about 70 MB), verified
+against the SHA256 in Microsoft's published manifest before it is ever executed,
+and cached under `%LOCALAPPDATA%\CareBotDeploy` so later runs start immediately.
+
+Both Windows PowerShell 5.1 and PowerShell 7 are supported.
 
 ## Anonymous by default, and why
 
@@ -112,11 +117,17 @@ Your working tree is never modified either way.
 # Deploy into a specific subscription
 .\Deploy-AzureDemo.ps1 -SubscriptionId <sub-id>
 
-# Provision the resources but do not upload content (no Node.js needed)
+# Provision the resources but do not upload content
 .\Deploy-AzureDemo.ps1 -SkipContentDeploy
 
 # Replace the Entra client secret before it expires
 .\Deploy-AzureDemo.ps1 -EnableEntraGate -RotateSecret
+
+# Publish with the Static Web Apps CLI instead of the native uploader (needs Node.js)
+.\Deploy-AzureDemo.ps1 -UploadMethod SwaCli
+
+# Air-gapped or locked-down machine: download StaticSitesClient elsewhere and reuse it
+.\Deploy-AzureDemo.ps1 -StaticSitesClientPath D:\tools\StaticSitesClient.exe
 ```
 
 Valid regions: `centralus` (default), `eastus2`, `westus2`, `westeurope`,
@@ -165,14 +176,43 @@ in the resource group, so deleting the group alone would leave it orphaned.
 
 ## Troubleshooting
 
-**"Cannot query resource groups in subscription ..."**
-The signed-in account lacks Contributor rights, or the subscription is
-policy-locked. Run `az account list -o table` and retry with
-`-SubscriptionId <id>`.
+**`ERROR: Operation returned an invalid status 'Forbidden'`**
+The signed-in account cannot create resource groups in the selected
+subscription, which is common when the default subscription is corporate and
+policy-locked. The script now probes your other subscriptions and prints the
+ones you can deploy into:
 
-**"Node.js not found"**
-Install it from <https://nodejs.org>, or run with `-SkipContentDeploy` and
-upload the content later.
+```
+  Subscriptions you can deploy into:
+    My Subscription
+      xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+```
+
+Re-run with `-SubscriptionId <id>`. If nothing is listed, no subscription on the
+account can create resources: ask for the **Contributor** role, or use an Azure
+free trial or Visual Studio benefit subscription. `az account list -o table`
+shows everything the account can see.
+
+**`Node.js not found`**
+Node.js is no longer needed. The default `-UploadMethod Native` publishes with
+Microsoft's `StaticSitesClient` binary and never touches Node. If you see this,
+you either passed `-UploadMethod SwaCli` explicitly or are running an older copy
+of the script, so pull the latest.
+
+**`az.cmd : ERROR ...` with `FullyQualifiedErrorId : NativeCommandError`**
+An older copy of the script. Windows PowerShell 5.1 turns a native command's
+stderr into a terminating error, which masked the real message. Current versions
+handle this. Pull the latest and re-run.
+
+**Download of StaticSitesClient fails or is blocked**
+On a restricted network, download `StaticSitesClient.exe` on another machine
+from the URL in
+<https://swalocaldeploy.azureedge.net/downloads/versions.json>, copy it over, and
+run with `-StaticSitesClientPath <path>`. If the checksum ever fails to match the
+manifest, the script refuses to execute the binary by design.
+
+**Node.js is installed and you would rather use the official CLI**
+Run with `-UploadMethod SwaCli`.
 
 **The site loads but the 3-screen wall does not stay in sync**
 The wall syncs across browser windows using `BroadcastChannel` and

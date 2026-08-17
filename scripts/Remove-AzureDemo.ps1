@@ -60,7 +60,14 @@ function Write-Warn2 ([string]$m) { Write-Host "    [warn] $m" -ForegroundColor 
 
 function Invoke-Az {
     param([Parameter(Mandatory)][string[]]$AzArgs, [switch]$AllowFail)
-    $out = & az @AzArgs 2>&1
+    # Windows PowerShell 5.1 converts a native command's stderr into ErrorRecords.
+    # With ErrorActionPreference=Stop that becomes a terminating NativeCommandError
+    # before we ever reach the $LASTEXITCODE check, which would defeat -AllowFail
+    # and surface a raw az stack trace. Relax it just around the call.
+    $prevEap = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try { $out = & az @AzArgs 2>&1 }
+    finally { $ErrorActionPreference = $prevEap }
     if ($LASTEXITCODE -ne 0) {
         if ($AllowFail) { return $null }
         throw ("az {0} failed:`n{1}" -f ($AzArgs -join ' '), ($out | Out-String).Trim())
