@@ -1131,7 +1131,7 @@
   <p><b>CareBot Catch &amp; Cage</b> is the interactive front end for the Healthcare prompt-injection → Sentinel → auto-remediation demo.</p>
   <ul>
     <li><b>Theater (CTF):</b> a visitor tries to jailbreak CareBot — steal the EHR credential, leak its system prompt, exfiltrate patient PHI via the <code>lookup_patient</code> honeypot, suppress a clinical safety alert, or tamper with a prior authorization.</li>
-    <li>Benign prompts are logged as <b>Informational</b> Azure OpenAI audit entries (no alert). Attack attempts are evaluated by Azure AI Content Safety Prompt Shields / Defender for Cloud threat protection for AI and raise a <b>Microsoft Defender for Cloud</b> alert at its catalog severity (Jailbreak &amp; Credential-Theft = Medium, ASCII Smuggling = High) in Microsoft Sentinel (<code>SecurityAlert</code>).</li>
+    <li>Benign prompts are logged as <b>Informational</b> Azure OpenAI audit entries (no alert). Attack attempts are evaluated by Azure AI Content Safety Prompt Shields / Defender for Cloud threat protection for AI and raise a <b>Microsoft Defender for Cloud</b> alert at its catalog severity (Jailbreak &amp; Credential-Theft = Medium, ASCII Smuggling = High, Anomalous Tool Invocation = Low) in Microsoft Sentinel (<code>SecurityAlert</code>). The MITRE ATT&amp;CK tactics shown are the ones published for that alert, so an alert ID always carries the same tactics.</li>
     <li>The correlated Sentinel incident (<code>SecurityIncident</code>) is prioritized <b>High</b> and, ~15s after the prompt, runs the containment playbook — a <b>defense-in-depth cage that scales with the attack</b>: <b>identity</b> (Entra <code>accountEnabled=false</code> + the leaked client secret revoked, with continuous access evaluation cutting the token the agent already holds) and <b>data</b> (Azure RBAC + Key Vault access stripped) on every compromise; <b>network</b> (attacker IP blocked at the WAF, agent egress denied at Azure Firewall) added for <b>data-exfiltration / C2</b> attempts; and an optional <b>compute/model</b> hard-stop reserved for <b>High-severity ASCII-smuggling</b>. Shown here as a simulated timeline.</li>
     <li><b>Lobby:</b> the same interactive CTF on an unattended lobby TV — visitors still chat and tap prompts, but the facilitator controls and the QR join are hidden, and the screen resets itself once a visitor walks away.</li>
   </ul>
@@ -3733,50 +3733,97 @@ function relAge(iso) {
   if (s < 3600) return Math.round(s / 60) + "m ago";
   return Math.round(s / 3600) + "h ago";
 }
+// The Microsoft Defender for Cloud alerts this demo can raise, transcribed from
+// the published "Alerts for AI services" catalog:
+// https://learn.microsoft.com/azure/defender-for-cloud/alerts-ai-workloads
+//
+// Alert id, title, MITRE ATT&CK tactics and severity are properties OF THE ALERT,
+// not of the scenario that tripped it, so they live here once. Previously two
+// scenarios raised the same Jailbreak alert with different tactic sets, which is
+// something a SOC analyst would spot immediately: in the product an alert id maps
+// to one fixed detection with one fixed tactic mapping.
+const DEFENDER_AI_ALERTS = {
+  credentialTheft: {
+    alertId: "AI.Azure_CredentialTheftAttempt",
+    title: "Detected credential theft attempts on an Azure AI model deployment",
+    tactics: ["Credential Access", "Lateral Movement", "Exfiltration"],
+    severity: "Medium"
+  },
+  asciiSmuggling: {
+    alertId: "AI.Azure_ASCIISmuggling",
+    title: "ASCII Smuggling prompt injection detected",
+    tactics: ["Impact"],
+    severity: "High"
+  },
+  anomalousTool: {
+    alertId: "AI.Azure_AnomalousToolInvocation",
+    title: "Anomalous tool invocation",
+    tactics: ["Execution"],
+    severity: "Low"
+  },
+  jailbreakDetected: {
+    alertId: "AI.Azure_Jailbreak.ContentFiltering.DetectedAttempt",
+    title: "A Jailbreak attempt on an Azure AI model deployment was detected by Azure AI Content Safety Prompt Shields",
+    tactics: ["Privilege Escalation", "Defense Evasion"],
+    severity: "Medium"
+  }
+};
+
 // Maps a detected event to the REAL first-party alert a SOC analyst sees in
 // Microsoft Sentinel. Each alert is aligned with its TRUE trigger point:
 //   • ASCII smuggling / jailbreak / prompt-injection -> INPUT-side signals
 //     (Azure AI Content Safety Prompt Shields inspects the prompt), and
 //   • credential theft -> OUTPUT-side signal (secrets detected in the model
 //     response), surfaced only once a compromise is confirmed (pattern "flag-leak").
-// Severities are pinned to Microsoft's published catalog, not the demo risk score.
+//
+// Titles, tactics and severities come from the catalog above and are applied LAST,
+// so a scenario cannot accidentally override them. What legitimately varies per
+// scenario is the interpretation: which MITRE ATLAS technique and OWASP LLM risk
+// best describe this attempt, and whether PHI was actually in play (hipaa) — that
+// last one is this demo's own annotation, not a field the product emits.
 function classifyAlert(pattern, risk, text) {
   const t = ((text || "") + " " + (pattern || "")).toLowerCase();
+  const alert = (key, scenario) =>
+    Object.assign({ source: "Microsoft Defender for Cloud" }, scenario, DEFENDER_AI_ALERTS[key]);
+
   // OUTPUT-based: credentials / secret material (the EHR service credential) detected
   // in the GenAI response.
   if (pattern === "flag-leak") {
-    return { title: "Detected credential theft attempts on an Azure AI model deployment", alertId: "AI.Azure_CredentialTheftAttempt",
-      source: "Microsoft Defender for Cloud", tactics: ["Credential Access", "Lateral Movement", "Exfiltration"],
-      atlas: "AML.T0057 · LLM Data Leakage", owasp: "LLM02 · Sensitive Information Disclosure", hipaa: true, severity: "Medium" };
+    return alert("credentialTheft", {
+      atlas: "AML.T0057 · LLM Data Leakage", owasp: "LLM02 · Sensitive Information Disclosure", hipaa: true });
   }
   // INPUT-based: invisible / zero-width characters smuggling hidden instructions —
   // indirect prompt injection (e.g., a hidden directive inside an uploaded referral)
   // that can compromise the application's tools. This is the unsafe-clinical-action vector.
   if (pattern === "ascii-smuggling" || /[\u200b\u200c\u200d\u2060\ufeff]/.test(text || "") || /ascii smuggl|zero[- ]?width|invisible (?:text|char)/.test(t)) {
-    return { title: "ASCII Smuggling prompt injection detected", alertId: "AI.Azure_ASCIISmuggling",
-      source: "Microsoft Defender for Cloud", tactics: ["Impact"], atlas: "AML.T0051 · LLM Prompt Injection", owasp: "LLM01 · Prompt Injection", hipaa: true, severity: "High" };
+    return alert("asciiSmuggling", {
+      atlas: "AML.T0051 · LLM Prompt Injection", owasp: "LLM01 · Prompt Injection", hipaa: true });
   }
   // Anomalous / manipulated tool invocation — CareBot driven to misuse a tool
   // (suppress a clinical safety alert, or force a prior-authorization decision).
+  // The catalog rates this alert Low: a good reminder that the raw alert severity
+  // is not the priority — the correlated incident is escalated to High below.
   if (pattern === "unsafe-action" || pattern === "auth-tamper") {
-    return { title: "Anomalous tool invocation by an Azure AI model deployment", alertId: "AI.Azure_AnomalousToolInvocation",
-      source: "Microsoft Defender for Cloud", tactics: ["Execution", "Impact"], atlas: "AML.T0051 · LLM Prompt Injection",
-      owasp: "LLM06 · Excessive Agency", hipaa: pattern === "unsafe-action", severity: "Medium" };
+    return alert("anomalousTool", {
+      atlas: "AML.T0051 · LLM Prompt Injection", owasp: "LLM06 · Excessive Agency",
+      hipaa: pattern === "unsafe-action" });
   }
-  // INPUT-based: bulk PHI exfiltration attempt, flagged by Prompt Shields.
+  // INPUT-based: bulk PHI exfiltration attempt, flagged by Prompt Shields. The
+  // injection itself is what Prompt Shields catches, so this is the same Jailbreak
+  // alert as below — the exfiltration reading is carried by ATLAS / OWASP, not by
+  // rewriting the alert's ATT&CK tactics.
   if (pattern === "exfiltration") {
-    return { title: "A Jailbreak attempt on an Azure AI model deployment was detected by Azure AI Content Safety Prompt Shields",
-      alertId: "AI.Azure_Jailbreak.ContentFiltering.DetectedAttempt", source: "Microsoft Defender for Cloud",
-      tactics: ["Collection", "Exfiltration"], atlas: "AML.T0057 · LLM Data Leakage", owasp: "LLM02 · Sensitive Information Disclosure", hipaa: true, severity: "Medium" };
+    return alert("jailbreakDetected", {
+      atlas: "AML.T0057 · LLM Data Leakage", owasp: "LLM02 · Sensitive Information Disclosure", hipaa: true });
   }
   // INPUT-based: jailbreak / prompt-injection attempt flagged by Prompt Shields.
   const jb = /jailbreak|developer mode|dan mode|do anything|act as|pretend|role[- ]?play|roleplay|you are now/.test(t);
   const sysleak = pattern === "sysprompt-disclosure";
   const secret = pattern === "secret-disclosure";
-  return { title: "A Jailbreak attempt on an Azure AI model deployment was detected by Azure AI Content Safety Prompt Shields",
-    alertId: "AI.Azure_Jailbreak.ContentFiltering.DetectedAttempt", source: "Microsoft Defender for Cloud",
-    tactics: ["Privilege Escalation", "Defense Evasion"], atlas: jb ? "AML.T0054 · LLM Jailbreak" : "AML.T0051 · LLM Prompt Injection",
-    owasp: sysleak ? "LLM07 · System Prompt Leakage" : (secret ? "LLM02 · Sensitive Information Disclosure" : "LLM01 · Prompt Injection"), hipaa: false, severity: "Medium" };
+  return alert("jailbreakDetected", {
+    atlas: jb ? "AML.T0054 · LLM Jailbreak" : "AML.T0051 · LLM Prompt Injection",
+    owasp: sysleak ? "LLM07 · System Prompt Leakage" : (secret ? "LLM02 · Sensitive Information Disclosure" : "LLM01 · Prompt Injection"),
+    hipaa: false });
 }
 
 // Render a MITRE ATLAS technique tag as a link to the authoritative technique
