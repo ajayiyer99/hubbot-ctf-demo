@@ -36,7 +36,10 @@
     Supports -WhatIf to preview every action without changing anything.
 
 .PARAMETER ResourceGroup
-    Resource group to create or reuse. Default: rg-carebot-ctf.
+    Resource group to create or reuse. Default: rg-carebot-ctf. If the group
+    already exists and you have Contributor on it, the deployment needs no
+    subscription-level permission at all, which is the usual arrangement on a
+    governed landing zone.
 
 .PARAMETER Name
     Static Web App name (must be globally unique-ish within the region).
@@ -147,11 +150,45 @@ function Invoke-Az {
     $ErrorActionPreference = 'Continue'
     try { $out = & az @AzArgs 2>&1 }
     finally { $ErrorActionPreference = $prevEap }
+    $text = ($out | Out-String).Trim()
     if ($LASTEXITCODE -ne 0) {
+        # Keep the message even when the caller tolerates the failure, so a later
+        # error can report what Azure actually said instead of guessing.
+        $script:LastAzError = $text
         if ($AllowFail) { return $null }
-        throw ("az {0} failed:`n{1}" -f ($AzArgs -join ' '), ($out | Out-String).Trim())
+        throw ("az {0} failed:`n{1}" -f ($AzArgs -join ' '), $text)
     }
-    return ($out | Out-String).Trim()
+    $script:LastAzError = $null
+    return $text
+}
+
+<#
+Printed only when a real deployment step has failed. Deliberately does NOT probe
+every subscription: on a corporate account that is a dozen-plus round trips
+taking minutes, and silently enumerating someone's whole estate is more than this
+script needs to do. It prints the two things that actually resolve the failure
+and the one command the user can run themselves.
+#>
+function Show-DeployTargetGuidance {
+    if ($script:LastAzError) {
+        Write-Host ''
+        Write-Note 'Azure reported:'
+        foreach ($line in (($script:LastAzError -split "`r?`n") | Select-Object -First 4)) {
+            if ($line.Trim()) { Write-Note "  $line" }
+        }
+    }
+    Write-Host ''
+    Write-Host '  Two ways forward:' -ForegroundColor White
+    Write-Host ''
+    Write-Note '  1. Deploy into a resource group you already have rights on. This needs no'
+    Write-Note '     subscription-level permission and is the usual answer on a governed'
+    Write-Note '     landing zone:'
+    Write-Note '        .\Deploy-AzureDemo.ps1 -ResourceGroup <existing-group>'
+    Write-Host ''
+    Write-Note '  2. Or deploy into a different subscription:'
+    Write-Note '        az account list -o table          # see what you have'
+    Write-Note '        .\Deploy-AzureDemo.ps1 -SubscriptionId <id>'
+    Write-Host ''
 }
 
 # True on Windows. $IsWindows only exists in PowerShell 6+, and its absence means
@@ -327,42 +364,24 @@ else {
     Write-Ok 'Entra gate OFF (anonymous access, so QR joins work). Use -EnableEntraGate to gate it.'
 }
 
-# Pick a name on first run. SWA hostnames are derived from the name, so we add a
-# short suffix to avoid collisions with other people running this same script.
-# A Forbidden here means the account cannot read resource groups in this
-# subscription, which is common when the default subscription is policy-locked.
-# Rather than just failing, probe the other subscriptions and name the usable ones.
+# Does the resource group already exist? This is only a hint. It decides whether
+# we attempt to create the group and whether we look for a Static Web App to
+# reuse — it is deliberately NOT a gate.
+#
+# Reading resource groups at subscription scope is a broader permission than
+# deploying into one particular group, so a Forbidden here does not mean the
+# deployment would fail. Governed landing zones commonly deny the subscription
+# wide read while still granting Contributor on a pre-created group. Blocking on
+# the weaker signal would refuse deployments that are perfectly allowed, so the
+# real operations are left to be the authority.
 $rgProbe = Invoke-Az @('group', 'exists', '-n', $ResourceGroup) -AllowFail
-if ($null -eq $rgProbe) {
-    Write-Host ''
-    Write-Warn2 ("Cannot query resource groups in '{0}' ({1})." -f $account.name, $account.id)
-    Write-Note 'That usually means the account lacks Contributor rights there, or the subscription is policy-locked.'
-    Write-Note 'Checking your other subscriptions for one you can deploy into...'
-
-    $usable = @()
-    $subsJson = Invoke-Az @('account', 'list', '--query', '[?state==`Enabled`].{name:name,id:id}', '-o', 'json') -AllowFail
-    if ($subsJson) {
-        foreach ($s in ($subsJson | ConvertFrom-Json)) {
-            if ($s.id -eq $account.id) { continue }
-            $probe = Invoke-Az @('group', 'exists', '-n', $ResourceGroup, '--subscription', $s.id) -AllowFail
-            if ($null -ne $probe) { $usable += $s }
-        }
-    }
-
-    Write-Host ''
-    if ($usable.Count -gt 0) {
-        Write-Host '  Subscriptions you can deploy into:' -ForegroundColor White
-        foreach ($s in $usable) { Write-Host ("    {0}`n      {1}" -f $s.name, $s.id) }
-        Write-Host ''
-        throw ("Re-run and pick one, for example:`n" +
-            "  .\Deploy-AzureDemo.ps1 -SubscriptionId {0}" -f $usable[0].id)
-    }
-    throw ("No subscription on this account can create resource groups. " +
-        "Ask for the Contributor role on a subscription (an Azure free trial or " +
-        "Visual Studio benefit subscription also works), then re-run with " +
-        "-SubscriptionId <id>. Run 'az account list -o table' to see them all.")
+$rgState = if ($null -eq $rgProbe) { 'unknown' } elseif ($rgProbe -eq 'true') { 'exists' } else { 'missing' }
+if ($rgState -eq 'unknown') {
+    Write-Warn2 ("Cannot read resource groups in '{0}'." -f $account.name)
+    Write-Note 'Common in a governed subscription, and not necessarily a blocker. Continuing:'
+    Write-Note 'the deployment itself will confirm what this account is allowed to do.'
 }
-$rgExists = $rgProbe -eq 'true'
+$rgExists = $rgState -eq 'exists'
 if (-not $Name) {
     $existing = $null
     if ($rgExists) {
@@ -382,7 +401,7 @@ if (-not $Name) {
 # --- Plan --------------------------------------------------------------------
 Write-Host ''
 Write-Step 'Deployment plan'
-Write-Note ("Resource group   : {0} ({1})" -f $ResourceGroup, $(if ($rgExists) { 'exists' } else { 'create' }))
+Write-Note ("Resource group   : {0} ({1})" -f $ResourceGroup, $(switch ($rgState) { 'exists' { 'exists, reuse' } 'missing' { 'create' } default { 'cannot read, will try' } }))
 Write-Note ("Static Web App   : {0}" -f $Name)
 Write-Note ("Region           : {0}" -f $Location)
 Write-Note ("Plan             : {0}" -f $Sku)
@@ -402,12 +421,24 @@ if ($regState -and $regState -ne 'Registered') {
 
 # --- Resource group ----------------------------------------------------------
 Write-Step "Resource group: $ResourceGroup"
-if ($rgExists) {
-    Write-Ok 'Already exists, reusing.'
+if ($rgState -eq 'exists') {
+    Write-Ok 'Already exists, reusing (needs no subscription-level rights).'
 }
 elseif ($PSCmdlet.ShouldProcess($ResourceGroup, "Create resource group in $Location")) {
-    Invoke-Az @('group', 'create', '-n', $ResourceGroup, '-l', $Location, '-o', 'none') | Out-Null
-    Write-Ok 'Created.'
+    $rgCreated = Invoke-Az @('group', 'create', '-n', $ResourceGroup, '-l', $Location, '-o', 'none') -AllowFail
+    if ($null -ne $rgCreated) {
+        Write-Ok 'Created.'
+    }
+    elseif ($rgState -eq 'unknown') {
+        # We could not read the group earlier either, so it may well already exist
+        # and simply not be visible to this account. Keep going and let the Static
+        # Web App step decide, since that is the operation that actually matters.
+        Write-Warn2 'Could not create the resource group. It may already exist here; continuing.'
+    }
+    else {
+        Show-DeployTargetGuidance
+        throw "Could not create resource group '$ResourceGroup' in subscription '$($account.name)'."
+    }
 }
 
 # --- Static Web App ----------------------------------------------------------
@@ -424,8 +455,14 @@ if ($swaShow) {
 elseif ($PSCmdlet.ShouldProcess($Name, "Create $Sku Static Web App in $Location")) {
     # No --source/--branch: this creates a manual-deploy app that we publish to
     # with a deployment token, so no GitHub connection or build pipeline is needed.
-    Invoke-Az @('staticwebapp', 'create', '-n', $Name, '-g', $ResourceGroup,
-        '-l', $Location, '--sku', $Sku, '-o', 'none') | Out-Null
+    # This is the first operation that genuinely proves the account can deploy
+    # here, so a failure is terminal and gets the full guidance.
+    $made = Invoke-Az @('staticwebapp', 'create', '-n', $Name, '-g', $ResourceGroup,
+        '-l', $Location, '--sku', $Sku, '-o', 'none') -AllowFail
+    if ($null -eq $made) {
+        Show-DeployTargetGuidance
+        throw "Could not create the Static Web App in resource group '$ResourceGroup' (subscription '$($account.name)')."
+    }
     Write-Ok 'Created.'
 }
 

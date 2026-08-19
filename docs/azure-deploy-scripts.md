@@ -50,9 +50,11 @@ in the browser.
 ## Prerequisites
 
 - **Azure CLI** — <https://aka.ms/installazurecli>, then `az login`.
-- **Contributor** on the target subscription. If the account cannot create
-  resource groups, the script probes your other subscriptions and prints the
-  ones that do work, so you can re-run with `-SubscriptionId`.
+- **Rights to deploy.** Either Contributor on the subscription, or Contributor on
+  a resource group that already exists. The second case is the normal one on a
+  governed landing zone, and is supported: pass `-ResourceGroup <existing-group>`
+  and the script deploys into it without needing any subscription-level
+  permission.
 
 **Node.js is not required.** The script publishes with `StaticSitesClient`,
 Microsoft's native uploader — the same binary the Static Web Apps CLI downloads
@@ -110,6 +112,10 @@ Your working tree is never modified either way.
 ```powershell
 # Pin the names so the URL stays stable across rebuilds
 .\Deploy-AzureDemo.ps1 -ResourceGroup rg-carebot-stl -Name carebot-ctf-stl
+
+# Deploy into a resource group that already exists (governed / landing-zone
+# subscription): needs Contributor on the group, nothing at subscription scope
+.\Deploy-AzureDemo.ps1 -ResourceGroup rg-existing-team-group
 
 # Choose a region (Static Web Apps only exists in these five)
 .\Deploy-AzureDemo.ps1 -Location eastus2
@@ -176,22 +182,34 @@ in the resource group, so deleting the group alone would leave it orphaned.
 
 ## Troubleshooting
 
-**`ERROR: Operation returned an invalid status 'Forbidden'`**
-The signed-in account cannot create resource groups in the selected
-subscription, which is common when the default subscription is corporate and
-policy-locked. The script now probes your other subscriptions and prints the
-ones you can deploy into:
+**`[warn] Cannot read resource groups in '<subscription>'`**
+Informational, not a failure. Listing resource groups at subscription scope is a
+broader permission than deploying into one particular group, so the script no
+longer treats it as a blocker — it says so and carries on, and the deployment
+itself decides. Governed landing zones routinely deny the subscription-wide read
+while still allowing you to deploy into a group you own.
 
-```
-  Subscriptions you can deploy into:
-    My Subscription
-      xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+**A create step fails with `AuthorizationFailed`**
+This one is real: Azure refused the operation. The script prints what Azure said
+and two ways forward.
+
+Deploy into a resource group you already have rights on, which needs no
+subscription-level permission and is the usual answer on a landing zone:
+
+```powershell
+.\Deploy-AzureDemo.ps1 -ResourceGroup <existing-group>
 ```
 
-Re-run with `-SubscriptionId <id>`. If nothing is listed, no subscription on the
-account can create resources: ask for the **Contributor** role, or use an Azure
-free trial or Visual Studio benefit subscription. `az account list -o table`
-shows everything the account can see.
+Or move to a subscription where you can create one:
+
+```powershell
+az account list -o table
+.\Deploy-AzureDemo.ps1 -SubscriptionId <id>
+```
+
+If neither is available, ask for **Contributor** on a subscription or on a single
+pre-created resource group. An Azure free trial or Visual Studio benefit
+subscription also works.
 
 **`Node.js not found`**
 Node.js is no longer needed. The default `-UploadMethod Native` publishes with
