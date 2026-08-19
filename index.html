@@ -17,8 +17,9 @@
       event (PromptInjectionEvents_CL) is emitted to a PLUGGABLE sink.
     - On a high-risk detection the app visualizes the Sentinel pipeline:
       incident -> playbook -> layered cage (identity/data/network[/compute]) -> caged.
-    - "Lobby" mode is an ambient, sanitized attract loop (no live chat) for the
-      lobby touchscreen TV.
+    - "Lobby" mode runs the same interactive CTF on an unattended lobby TV:
+      visitors still chat and tap prompts, but the facilitator controls and the
+      QR join are hidden and the screen resets itself once a visitor leaves.
 
   TRUTH & ACCURACY NOTES (do not remove)
     - This browser app does NOT hold Log Analytics / DCR credentials. Live emit
@@ -186,10 +187,6 @@
     border: 0; border-radius: 6px; padding: 0 16px; cursor: pointer;
   }
   #inputForm button:disabled { opacity: 0.5; cursor: not-allowed; }
-  #lobbyNote {
-    padding: 10px 16px; border-top: 1px solid var(--border);
-    background: var(--panel); color: var(--muted); font-size: 12px; font-style: italic;
-  }
 
   #inspector { background: var(--panel); overflow-y: auto; }
   #inspector .section { border-bottom: 1px solid var(--border); }
@@ -494,7 +491,6 @@
     box-shadow: 0 0 0 3px rgba(15,108,189,.15); }
   #inputForm button { border-radius: 12px; color: var(--accent-ink); padding: 0 22px; font-size: 15px; }
   #inputForm button:hover:not(:disabled) { background: var(--accent-hover); }
-  #lobbyNote { background: #fff; }
 
   /* Inspector / live monitor */
   #inspector { background: var(--bg); }
@@ -955,7 +951,7 @@
   </div>
 </div>
 <header>
-  <span class="seg" id="modeSeg" title="Theater = interactive CTF · Lobby = ambient attract loop">
+  <span class="seg" id="modeSeg" title="Theater = facilitator-driven CTF · Lobby = same CTF, simplified for an unattended screen">
     <button data-mode="theater" class="active">🎭 Theater (CTF)</button>
     <button data-mode="lobby">📺 Lobby (attract)</button>
   </span>
@@ -989,11 +985,6 @@
       <textarea id="userInput" placeholder="Type a message to CareBot… or tap a suggestion below 👇  (Shift+Enter for a new line)" rows="2"></textarea>
       <button type="submit" id="sendBtn">Send</button>
     </form>
-    <div id="lobbyNote" hidden>
-      📺 Lobby attract mode — CareBot chat is disabled for unattended display. The
-      panel on the right replays sanitized Sentinel incidents. Switch to
-      <b>Theater (CTF)</b> for the facilitated jailbreak experience.
-    </div>
   </section>
 
   <section id="inspector">
@@ -1141,8 +1132,8 @@
   <ul>
     <li><b>Theater (CTF):</b> a visitor tries to jailbreak CareBot — steal the EHR credential, leak its system prompt, exfiltrate patient PHI via the <code>lookup_patient</code> honeypot, suppress a clinical safety alert, or tamper with a prior authorization.</li>
     <li>Benign prompts are logged as <b>Informational</b> Azure OpenAI audit entries (no alert). Attack attempts are evaluated by Azure AI Content Safety Prompt Shields / Defender for Cloud threat protection for AI and raise a <b>Microsoft Defender for Cloud</b> alert at its catalog severity (Jailbreak &amp; Credential-Theft = Medium, ASCII Smuggling = High) in Microsoft Sentinel (<code>SecurityAlert</code>).</li>
-    <li>The correlated Sentinel incident (<code>SecurityIncident</code>) is prioritized <b>High</b> and, ~15s after the prompt, runs the containment playbook — a <b>defense-in-depth cage that scales with the attack</b>: <b>identity</b> (Entra <code>accountEnabled=false</code> + sessions revoked) and <b>data</b> (Azure RBAC + Key Vault access stripped) on every compromise; <b>network</b> (attacker IP blocked at the WAF, agent egress denied at Azure Firewall) added for <b>data-exfiltration / C2</b> attempts; and an optional <b>compute/model</b> hard-stop reserved for <b>High-severity ASCII-smuggling</b>. Shown here as a simulated timeline.</li>
-    <li><b>Lobby:</b> ambient attract loop for the lobby TV — sanitized incident replay, no live chat.</li>
+    <li>The correlated Sentinel incident (<code>SecurityIncident</code>) is prioritized <b>High</b> and, ~15s after the prompt, runs the containment playbook — a <b>defense-in-depth cage that scales with the attack</b>: <b>identity</b> (Entra <code>accountEnabled=false</code> + the leaked client secret revoked, with continuous access evaluation cutting the token the agent already holds) and <b>data</b> (Azure RBAC + Key Vault access stripped) on every compromise; <b>network</b> (attacker IP blocked at the WAF, agent egress denied at Azure Firewall) added for <b>data-exfiltration / C2</b> attempts; and an optional <b>compute/model</b> hard-stop reserved for <b>High-severity ASCII-smuggling</b>. Shown here as a simulated timeline.</li>
+    <li><b>Lobby:</b> the same interactive CTF on an unattended lobby TV — visitors still chat and tap prompts, but the facilitator controls and the QR join are hidden, and the screen resets itself once a visitor walks away.</li>
   </ul>
   <div style="margin:2px 0 12px; padding:10px 12px; background:var(--panel2); border-radius:8px; font-size:13px; line-height:1.5;">
     <b>🎭 Theater wall (48′×9′ · 3 screens):</b> run the demo across three tiled 16:9 windows on one media PC —
@@ -5246,7 +5237,6 @@ function setUiMode(mode) {
   document.querySelectorAll("#modeSeg button").forEach(b => b.classList.toggle("active", b.dataset.mode === mode));
   document.getElementById("inputForm").hidden = false;
   document.getElementById("samplePrompts").hidden = false;
-  document.getElementById("lobbyNote").hidden = true;
   document.getElementById("scenarioTitle").textContent = mode === "lobby"
     ? "🩺 Jailbreak CareBot — Healthcare Prompt-Injection CTF"
     : "🎭 Envisioning Theater — Jailbreak CareBot";
