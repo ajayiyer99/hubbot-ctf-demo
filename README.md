@@ -102,7 +102,16 @@ detection and SOAR containment, and proving the agent is caged:
 
 The timeline is a **simulation**. The real block runs in a Sentinel playbook (Logic App)
 via Microsoft Graph `PATCH /servicePrincipals/{id}` with `{ "accountEnabled": false }`
-— the verified Entra Agent ID disable path. The timeline shows this identity block inside
+— the verified Entra Agent ID disable path. Alongside it the playbook calls
+`POST /servicePrincipals/{id}/removePassword` to revoke the client secret the agent
+just leaked, so the exfiltrated credential can no longer mint tokens. Disabling the
+service principal is also a **continuous access evaluation** event, so CAE-aware
+resources reject the token the agent already holds on its next call (401 plus a claims
+challenge) instead of honouring it until it expires. CAE for workload identities covers
+single-tenant service principals and needs Workload Identities Premium; managed
+identities are not supported. Where CAE does not apply, an already-issued access token
+stays valid until expiry, and the data-plane revocations below are the backstop for
+that window. The timeline shows this identity block inside
 a **scenario-aware, defense-in-depth cage**: **identity** is the floor for every
 compromise, **data** controls always run (Azure RBAC on **FHIR Data Contributor** +
 **Key Vault Secrets User**, **Azure Health Data Services** FHIR token revoke, **Microsoft
