@@ -90,15 +90,16 @@ $account = (Invoke-Az @('account', 'show', '-o', 'json')) | ConvertFrom-Json
 Write-Ok ("Subscription: {0} ({1})" -f $account.name, $account.id)
 
 # --- Show what will go --------------------------------------------------------
-# A Forbidden here means the account cannot read resource groups at all, so fail
-# with something actionable instead of a raw error.
+# Reading resource groups is a broader permission than deleting one you own, so a
+# Forbidden here is not proof the delete would fail. Warn and let az group delete
+# be the authority rather than refusing up front.
 $probe = Invoke-Az @('group', 'exists', '-n', $ResourceGroup) -AllowFail
 if ($null -eq $probe) {
-    throw ("Cannot query resource groups in subscription '{0}' ({1}). " -f $account.name, $account.id) +
-    'The signed-in account most likely lacks Contributor rights there, or the subscription is policy-locked. ' +
-    'Run "az account list -o table" to see what else you can use, then re-run with -SubscriptionId <id>.'
+    Write-Warn2 ("Cannot read resource groups in '{0}'." -f $account.name)
+    Write-Note 'Common in a governed subscription. Continuing: the delete itself will confirm.'
 }
-$exists = $probe -eq 'true'
+# Treat "unreadable" as "assume it is there", so the delete is still attempted.
+$exists = $probe -ne 'false'
 if (-not $exists) {
     Write-Warn2 "Resource group '$ResourceGroup' does not exist; nothing to delete."
 }
