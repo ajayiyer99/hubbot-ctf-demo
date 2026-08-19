@@ -1093,7 +1093,7 @@
   <fieldset>
     <legend>Containment — defense-in-depth cage</legend>
     <label class="check"><input id="cfgHardStop" type="checkbox" /> Include compute / model hard-stop (break-glass, last resort)</label>
-    <div class="hint">Containment <b>scales with the attack</b>. <b>Identity</b> (Entra disable + token revoke) and <b>data</b> (Azure RBAC + FHIR/Key Vault revoke + Microsoft Purview PHI DLP) run on every confirmed compromise; <b>network</b> (WAF source-IP block + Azure Firewall egress deny) is added for <b>bulk PHI exfiltration</b>, <b>prior-auth tampering</b>, and High-severity injections. This toggle governs the highest-blast-radius layer — the compute/model <b>patient-safety kill switch</b> (stop the App Service host + rotate the Azure OpenAI keys, <code>disableLocalAuth</code>), reserved for <b>High-severity ASCII-smuggling</b> of an unsafe clinical action. A SOC usually gates this behind approval, so turn it off to keep even those at network-level containment (graduated response).</div>
+    <div class="hint">Containment <b>scales with the attack</b>. <b>Identity</b> (Entra disable + leaked-secret revoke, with continuous access evaluation cutting the live token) and <b>data</b> (Azure RBAC + FHIR/Key Vault revoke + Microsoft Purview PHI DLP) run on every confirmed compromise; <b>network</b> (WAF source-IP block + Azure Firewall egress deny) is added for <b>bulk PHI exfiltration</b>, <b>prior-auth tampering</b>, and High-severity injections. This toggle governs the highest-blast-radius layer — the compute/model <b>patient-safety kill switch</b> (stop the App Service host + rotate the Azure OpenAI keys, <code>disableLocalAuth</code>), reserved for <b>High-severity ASCII-smuggling</b> of an unsafe clinical action. A SOC usually gates this behind approval, so turn it off to keep even those at network-level containment (graduated response).</div>
   </fieldset>
   <div class="row">
     <button class="secondary" id="closeSettings">Cancel</button>
@@ -3923,7 +3923,8 @@ function emitEvent(text, risk, pattern, opts) {
 
 // ============================================================
 // Layered containment playbook (defense-in-depth). Identity is the primary,
-// verified cage (Entra disable + token revoke); data (RBAC/Key Vault), network
+// verified cage (Entra disable + leaked-secret revoke, with continuous access
+// evaluation cutting the already-issued token); data (RBAC/Key Vault), network
 // (WAF + Azure Firewall) and an optional compute/model hard-stop are additional
 // vectors. Each step maps to a real Microsoft Graph / Azure ARM operation — the
 // timeline itself is a SIMULATION. Returns the step model consumed by
@@ -4024,14 +4025,27 @@ function containmentSteps(ctx) {
              'Content-Type: application/json\n\n' +
              '{ "accountEnabled": false }\n\n' +
              'HTTP/1.1 204 No Content') },
-    { icon: "🚫", html: '<b>Identity</b> &middot; Microsoft Graph <code>POST /servicePrincipals/' + escapeHtml(spid) + '/revokeSignInSessions</code> &rarr; <b>204</b> &mdash; active tokens revoked', cls: "",
-      detail: note('Revoke any tokens the agent already holds so an in-flight session cannot keep calling APIs.') +
+    { icon: "🚫", html: '<b>Identity</b> &middot; Microsoft Graph <code>POST /servicePrincipals/' + escapeHtml(spid) + '/removePassword</code> &rarr; <b>204</b> &mdash; the leaked client secret is revoked', cls: "", key: true,
+      detail: note('The credential CareBot leaked is this agent&rsquo;s own client secret, so revoking it closes the door the attacker just opened: the exfiltrated secret can no longer be exchanged for a token.') +
         code('POST https://graph.microsoft.com/v1.0/servicePrincipals/\n' +
-             '     ' + escapeHtml(spid) + '/revokeSignInSessions\n\n' +
+             '     ' + escapeHtml(spid) + '/removePassword\n' +
+             'Content-Type: application/json\n\n' +
+             '{ "keyId": "7f1c9a04-3b52-4e18-9d6a-0c2e5b7f4a91" }\n\n' +
              'HTTP/1.1 204 No Content\n' +
-             '// refresh + access tokens invalidated') },
-    { icon: "🔑", html: '<b>Data</b> &middot; Azure RBAC &mdash; removed role assignments <b>FHIR Data Contributor</b> + <b>Key Vault Secrets User</b> from the agent managed identity &rarr; PHI data-plane access revoked', cls: "",
-      detail: note('Strip the data-plane role assignments from the agent managed identity so PHI access is revoked even if a token survives.') +
+             '// the exfiltrated client_secret can no longer mint tokens') },
+    { icon: "⏱️", html: '<b>Identity</b> &middot; <b>Continuous access evaluation</b> &mdash; the disable event is signalled to CAE-aware resources &rarr; the token the agent already holds is rejected on its next call (<b>401</b> + claims challenge)', cls: "",
+      detail: note('Disabling a service principal is a CAE revocation event. CAE-aware resources re-evaluate mid-session and reject the token the agent is already holding, instead of honouring it until it expires.') +
+        code('event    : service principal disabled (accountEnabled=false)\n' +
+             'signal   : continuous access evaluation &mdash; workload identities\n' +
+             'effect   : CAE-aware resource returns 401 + claims challenge on the\n' +
+             '           next call made with the existing token\n' +
+             'scope    : single-tenant service principals; requires Workload\n' +
+             '           Identities Premium. Managed identities are not supported.\n' +
+             'fallback : without CAE an already-issued access token stays valid\n' +
+             '           until it expires (typically 60-90 min) &mdash; the data-plane\n' +
+             '           revocations below are the backstop for that window') },
+    { icon: "🔑", html: '<b>Data</b> &middot; Azure RBAC &mdash; removed role assignments <b>FHIR Data Contributor</b> + <b>Key Vault Secrets User</b> from the agent service principal &rarr; PHI data-plane access revoked', cls: "",
+      detail: note('Strip the data-plane role assignments from the agent service principal so PHI access is revoked even if a token survives.') +
         code('az role assignment delete \\\n' +
              '  --assignee ' + escapeHtml(spid) + ' \\\n' +
              '  --role "FHIR Data Contributor"\n' +
@@ -4098,7 +4112,7 @@ function containmentSteps(ctx) {
   steps.push({ icon: "🔒", html: 'CareBot contained &mdash; ' + contain + ' &mdash; <b>agent caged</b>', cls: "block",
     detail: note('End state: the agent is caged across every plane that ran. The badge on the join card reflects the Entra risky-agent mark.') +
       code('CareBot &mdash; CAGED\n' +
-           'identity : disabled + tokens revoked + risk High (CA block)\n' +
+           'identity : disabled + secret revoked + risk High (CA block)\n' +
            'data     : PHI roles removed, DLP enforced, secret rotated' +
            (network ? '\nnetwork  : attacker IP blocked, egress denied' : '') +
            (hardStop ? '\ncompute  : host stopped, model keys rotated' : '')) });
