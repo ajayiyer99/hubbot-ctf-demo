@@ -86,7 +86,8 @@ Point at the screen as you name each zone.
 Turn the room's attention to the right panel. About **15 seconds** after the attempt (this delay is **deliberate** — it simulates real SOC latency: telemetry ingestion + analytics‑rule evaluation), the pipeline plays out:
 
 **A Microsoft Defender for Cloud alert surfaces in Microsoft Sentinel** — call out, without reading every field:
-- The **alert** carries its true **catalog severity** — *Jailbreak*, *Credential‑Theft* and *Anomalous Tool Invocation* are `Medium`, *ASCII Smuggling* is `High` — alongside its real `AI.Azure_*` alert ID.
+- The **alert** carries its true **catalog severity** — *Jailbreak* and *Credential‑Theft* are `Medium`, *ASCII Smuggling* is `High`, *Anomalous Tool Invocation* is `Low` — alongside its real `AI.Azure_*` alert ID. A `Low` alert still driving a `High` incident is the point: you triage the incident, not the raw alert.
+- **MITRE ATT&CK tactics** come from the alert itself, so the same `AI.Azure_*` ID always shows the same tactics no matter which attack tripped it. The scenario‑specific reading is carried by the ATLAS technique and the OWASP risk.
 - **Standards chips** on the card: a **MITRE ATLAS** technique, an **OWASP LLM Top‑10** risk, and — on PHI‑relevant detections — a **HIPAA Security Rule** tag. (All link to authoritative source docs.)
 - The offending prompt captured as **evidence**.
 - **`🗄️ Table SecurityAlert · Log Analytics CareBot-SecOps · via the Microsoft Defender for Cloud connector`** — "this is real, queryable telemetry from a first‑party detection, not a toast notification."
