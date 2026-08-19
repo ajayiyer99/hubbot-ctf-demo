@@ -538,6 +538,40 @@
   body[data-mode="lobby"] #joinBtn,
   body[data-mode="lobby"] #wallBtn { display: none !important; }
 
+  /* =====================================================================
+     LOBBY (attract) — an interactive screen that runs unattended.
+     Visitors chat and tap prompts, so the conversation, the prompt tray and
+     the input all stay. What goes is the facilitator cockpit around them:
+     nobody is standing there to use it, and Settings exposes the CTF flag and
+     per-Hub config to whoever walks up. The mode toggle stays so a facilitator
+     can still get back to Theater.
+     ===================================================================== */
+  body[data-mode="lobby"] #hubPill,
+  body[data-mode="lobby"] #enginePill,
+  body[data-mode="lobby"] #resetBtn,
+  body[data-mode="lobby"] #settingsBtn,
+  body[data-mode="lobby"] #helpBtn { display: none !important; }
+
+  /* Facilitator details is an explicit spoiler panel; the public wall already
+     hides it, and an unattended lobby screen is just as public. */
+  body[data-mode="lobby"] #facilitatorSection { display: none !important; }
+
+  /* Anchor the conversation to the bottom of its column so it sits with the
+     prompt tray instead of leaving a hole in the middle of a big screen.
+     Uses an auto top margin on the first bubble rather than
+     justify-content: flex-end, which pushes overflow outside a scrollable flex
+     column and makes the earliest messages unreachable. The auto margin
+     collapses to 0 as soon as the chat fills the space, so scrollback works. */
+  body[data-mode="lobby"] #messages > :first-child { margin-top: auto; }
+
+  /* CareBot's greeting already says "tap an example prompt … every attempt is
+     scored live", so the card description underneath repeats it verbatim. */
+  body[data-mode="lobby"] #scenarioDesc { display: none; }
+
+  /* While nothing has happened, the response card is a paragraph explaining
+     that nothing has happened. Hide it until there is an incident to show. */
+  body[data-mode="lobby"].soar-idle #soarSection { display: none; }
+
   /* Join dialog — big QR for projecting on the theater screen */
   #joinDialog { text-align: center; min-width: 380px; max-width: 92vw; }
   #joinDialog h2 { font-size: 20px; }
@@ -3893,14 +3927,22 @@ function emitEvent(text, risk, pattern, opts) {
   // fires, no-op instead of injecting a "ghost" alert + incident onto a freshly reset run.
   const gen = state.incidentEpoch;
 
+  // Mark the detection as in flight. Nothing is on screen during the dwell window,
+  // so without this the Lobby idle reset would read a pending detection as an idle
+  // screen and wipe the attack before its alert ever lands.
+  state.pendingDetections = (state.pendingDetections || 0) + 1;
+
   // Detection is not instantaneous: the prompt is ingested, the analytics rule
   // evaluates, and only then does the alert land in the incident queue.
   setTimeout(() => {
+    state.pendingDetections = Math.max(0, (state.pendingDetections || 1) - 1);
     if (state.incidentEpoch !== gen) return;
     const row = buildEvent(text, risk, pattern);
     state.events.push(row);
     renderEventFeed();
     broadcast();
+    // Something just happened on screen, so restart the Lobby idle clock from here.
+    scheduleLobbyIdleReset();
 
     // Live sink: POST to relay (best-effort, non-blocking). The relay authenticates
     // to the Logs Ingestion API; this browser never holds DCR credentials.
@@ -4185,6 +4227,9 @@ function triggerRemediation(row, escalated) {
       renderRemediation();
       if (i === steps.length - 1) setAgentBlocked();
       broadcast();
+      // Each revealed step is fresh activity on screen, so the Lobby idle window
+      // measures from the end of the containment run rather than the last click.
+      scheduleLobbyIdleReset();
     }, playbookStepMs() * (i + 1));
   });
 }
@@ -4195,6 +4240,10 @@ function renderRemediation() {
   const box = document.getElementById("remediation");
   if (!box) return;
   const rem = state.remediation;
+  // Lobby runs unattended, so an "it hasn't happened yet" paragraph is the
+  // busiest, lowest-value block on the screen. Drop the whole card until there
+  // is an incident to show (the CSS rule keys off this class).
+  document.body.classList.toggle("soar-idle", !rem);
   if (!rem) {
     box.innerHTML = '<div class="hint">No incident yet — a high-severity detection opens a Microsoft Sentinel incident and runs the containment playbook (Logic App).</div>';
     return;
@@ -4500,6 +4549,9 @@ async function runAgent() {
   } finally {
     state.busy = false; setBusy(false);
     checkWin();
+    // Start the Lobby idle clock from the end of the run, not the last click, so
+    // a long detection + containment sequence isn't counted as idle time.
+    scheduleLobbyIdleReset();
   }
 }
 
@@ -4571,7 +4623,11 @@ function renderEventFeed() {
   const feed = document.getElementById("eventFeed");
   feed.innerHTML = "";
   if (state.events.length === 0) {
-    feed.innerHTML = '<div class="hint">No active incidents. Benign prompts log as Informational audit entries; attack detections from Microsoft Defender for Cloud surface here ~15s after the attempt.</div>';
+    // Theater has a facilitator narrating, so it gets the full explanation.
+    // Lobby is read at a distance with nobody talking over it: one short line.
+    feed.innerHTML = state.uiMode === "lobby"
+      ? '<div class="hint">Monitoring — no active incidents.</div>'
+      : '<div class="hint">No active incidents. Benign prompts log as Informational audit entries; attack detections from Microsoft Defender for Cloud surface here ~15s after the attempt.</div>';
   }
   const sevClass = s => s === "High" ? "sev-high" : s === "Medium" ? "sev-medium" : s === "Low" ? "sev-low" : "sev-info";
   const stClass = s => s === "Active" ? "st-active" : s === "Closed" ? "st-closed" : "st-new";
@@ -4642,6 +4698,7 @@ function resetDemo() {
   state.messages = [];
   state.session = newSessionId();
   state.events = [];
+  state.pendingDetections = 0;   // the epoch bump above supersedes any dwell-window timers
   state.remediation = null;
   state.incidentOpen = false;
   state.agentRisky = false;
@@ -4658,6 +4715,36 @@ function resetDemo() {
   renderRiskyBadge();
   setBusy(false);
   broadcast();
+}
+
+// ---------- Lobby idle auto-reset ----------
+// Lobby is interactive but unattended: a visitor can compromise CareBot and walk
+// away, leaving the caged end state and their conversation on the screen for the
+// rest of the day. Nobody is standing there to press "Reset demo" (that button is
+// hidden in Lobby precisely because strangers shouldn't drive the cockpit), so the
+// screen returns itself to a clean greeting after a quiet spell. Theater is
+// facilitator-driven and never auto-resets.
+// Tune per site with ?idle=<seconds>; ?idle=0 disables the auto-reset entirely.
+const LOBBY_IDLE_MS = (() => {
+  const q = parseFloat(new URLSearchParams(location.search).get("idle"));
+  return (Number.isFinite(q) && q >= 0) ? q * 1000 : 90000;
+})();
+let lobbyIdleTimer = null;
+function scheduleLobbyIdleReset() {
+  clearTimeout(lobbyIdleTimer);
+  if (state.uiMode !== "lobby" || IS_WALL_PANEL || LOBBY_IDLE_MS <= 0) return;
+  lobbyIdleTimer = setTimeout(lobbyIdleReset, LOBBY_IDLE_MS);
+}
+function lobbyIdleReset() {
+  if (state.uiMode !== "lobby" || IS_WALL_PANEL) return;
+  // Never cut off a run in flight: the agent may still be answering, a detection
+  // may still be inside its dwell window (nothing is on screen yet, but an alert
+  // is coming), or the containment timeline may still be playing out.
+  const playbookRunning = !!state.remediation && state.remediation.doneCount < state.remediation.steps.length;
+  if (state.busy || playbookRunning || (state.pendingDetections || 0) > 0) { scheduleLobbyIdleReset(); return; }
+  // Nothing has happened yet (just the welcome), so there is nothing to clear.
+  if (state.messages.length <= 1 && !state.won && state.events.length === 0) return;
+  resetDemo();
 }
 
 // Pure render of the compromise banner from state.winText — mirror-friendly.
@@ -5170,6 +5257,8 @@ function setUiMode(mode) {
     "Chat with CareBot below — or tap an example prompt. Every message is scored live<span class=\"soc-ref\"> in the Security Monitor on the right</span>.";
   resetDemo();
   renderEventFeed();
+  // Leaving Lobby cancels the idle clock; entering it starts one.
+  scheduleLobbyIdleReset();
 }
 
 // ---------- Chat lifecycle ----------
@@ -5587,6 +5676,12 @@ function init() {
   input.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); }
   });
+
+  // Any interaction restarts the Lobby idle clock, so the screen only resets
+  // itself once a visitor has actually walked away. Captured at the document so
+  // prompt chips, the playbook rows and the persona switcher all count.
+  document.addEventListener("click", scheduleLobbyIdleReset, true);
+  document.addEventListener("keydown", scheduleLobbyIdleReset, true);
 
   document.getElementById("appVersion").textContent = "v" + APP_VERSION + " · " + APP_BUILD_DATE;
   // Persona lens: honor ?persona=patient|nurse|payor|analyst (used to preset shared / wall links);
