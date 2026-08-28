@@ -16,6 +16,15 @@ Azure OpenAI endpoint (**Live** engine, key stored only in your browser).
 > auto-remediation timeline are **simulated** in the browser. No secrets or credentials
 > are contained here.
 
+## Sharing this demo with others
+
+Bringing it to a catalog page, pitching it internally, or handing it to another
+Hub? The **[catalog kit](docs/catalog/)** is written for people who did not build
+it: a [one-pager](docs/catalog/one-pager.md) covering what it is and who it is
+for, [architecture diagrams](docs/catalog/architecture.md) including what is real
+versus simulated, and a [bill of materials](docs/catalog/bill-of-materials.md)
+with real costs and setup times.
+
 ## Enable GitHub Pages (one-time, ~20 seconds)
 
 The live URL above returns 404 until Pages is enabled once. This repo's default
