@@ -9,6 +9,11 @@ customers. Written for people who did not build it.
 | **[Architecture](architecture.md)** | What is actually happening, and what is real versus simulated? | A technical audience asks, or you are briefing an SE |
 | **[Bill of materials](bill-of-materials.md)** | What do I need, what does it cost, how long does setup take? | You are deciding whether you can run it |
 
+The architecture diagrams are **Excalidraw** drawings in
+[`diagrams/`](diagrams/). Each ships as an `.svg` that renders on GitHub and an
+`.excalidraw` source you can open at [excalidraw.com](https://excalidraw.com) to
+rebrand, translate or lift a panel straight into a slide.
+
 **Live demo:** https://ajayiyer99.github.io/hubbot-ctf-demo/
 
 **In one line:** visitors talk a healthcare AI agent into leaking a credential
