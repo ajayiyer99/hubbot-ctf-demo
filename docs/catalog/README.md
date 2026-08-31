@@ -7,7 +7,7 @@ customers. Written for people who did not build it.
 |---|---|---|
 | **[One-pager](one-pager.md)** | What is this, who is it for, what do they take away? | You are listing it on a catalog page or pitching it internally |
 | **[Architecture](architecture.md)** | What is actually happening, and what is real versus simulated? | A technical audience asks, or you are briefing an SE |
-| **[Bill of materials](bill-of-materials.md)** | What do I need, what does it cost, how long does setup take? | You are deciding whether you can run it |
+| **[Bill of materials](bill-of-materials.md)** | What does the Theater need, what does it cost, how long is setup? | You are planning a Theater delivery |
 | **[Video script](video-script.md)** | How do I record a 5-minute walkthrough for other SEs? | You are making an enablement video, or learning to deliver it yourself |
 
 The architecture diagrams are **Excalidraw** drawings in
