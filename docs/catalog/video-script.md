@@ -1,7 +1,7 @@
 # Enablement video script — CareBot Catch & Cage (Theater)
 
-**A 5-minute screen-recorded walkthrough for other Hub SEs: what the demo is,
-how it works, and how to deliver it.**
+**A 5-minute walkthrough for other Hub SEs: what the demo is, how it works, and
+how to deliver it. Filmed on the 3-screen Envisioning Theater wall.**
 
 This is SE to SE. The audience already understands prompt injection and SOC
 tooling, so the job is not to teach security. It is to get them confident enough
@@ -11,126 +11,184 @@ to run this in front of a customer next week.
 |---|---|
 | **Runtime** | 5:00 |
 | **Audience** | Hub Solution Engineers and Hub Directors |
-| **Format** | Screen recording with voice-over, no face cam needed |
-| **Recording time** | About 45 min including retakes |
-| **Tools** | Any screen recorder. Teams, Clipchamp, Snagit or OBS all work. |
+| **Format** | Camera on the 3-screen wall, presenter in frame, plus screen-capture cutaways |
+| **Recording time** | About 90 min including room setup and retakes |
+| **Tools** | Any camera on a tripod. Plus a screen recorder on the media PC for the cutaways. |
+
+> **Why film the wall instead of capturing the screen.** Half of what a Hub SE
+> needs to see is the *room*: the scale, where you stand, that the three panels
+> tell a left-to-right story. A screen capture cannot show that. The cost is that
+> small on-screen text is harder to read on camera, which is what the cutaways in
+> the shot list are for.
+
+---
+
+## The trap this script exists to avoid
+
+Once you are standing at the wall running the demo, you slip into **delivery
+mode** and narrate the demo instead of narrating *how to run the demo*. The
+result is a recording of a customer demo, not an enablement video. Your viewer
+already knows what a prompt injection is. What they do not know is which persona
+to pick, what to say when the attack gets refused, and how to answer a security
+architect.
+
+**The fix is physical.** Shoot the two enablement beats (3:27 onward) as a
+**separate setup**, at the podium or a desk, facing camera, with the wall behind
+you or off. Do not shoot them mid-run. Changing your body position is what stops
+you sliding back into demo narration.
 
 ---
 
 ## Before you hit record
 
-Get these right and the recording works in one or two takes.
+### The wall
 
 | ✔ | Setup | Why |
 |---|---|---|
-| ☐ | Open `?persona=nurse&intro=0` | Skips the story screen and lens picker, lands you straight in a clean Theater |
-| ☐ | Browser full screen (F11), 1920×1080 | No tabs, no bookmarks bar, no dev tools |
-| ☐ | Engine pill reads **`engine: mock`** | Deterministic. Retakes produce identical output, which matters when you re-record one beat |
-| ☐ | **⚙ Settings → Detection latency → 4s**, **Response pace → 0.3s** | See the note below. Cuts ~27s of waiting to ~10s |
-| ☐ | Leave **🔧 Facilitator details** collapsed | It is the spoiler panel |
-| ☐ | Click **↻ Reset demo** | Green `🟢 CareBot: ACTIVE`, empty feed |
-| ☐ | Close Teams, Outlook, notifications | A toast mid-take costs you the whole beat |
+| ☐ | Open the three panels: `?panel=1`, `?panel=2`, `?panel=3` (or the **Wall · 3-screen** button) | One per screen, same origin, so they stay in sync |
+| ☐ | **F11 on every window** | Tabs, address bar and your bookmarks bar are otherwise on camera at 48 feet wide |
+| ☐ | Set browser zoom **before** you record, then leave it alone | Changing zoom mid-take puts the "175% / Reset" flyout on screen |
+| ☐ | Open `?persona=nurse&intro=0` on panel 1 | Skips the story screen and lens picker |
+| ☐ | Engine pill reads **`engine: mock`** | Deterministic, so you can re-record one beat |
+| ☐ | **Settings → Detection latency → 8s**, **Response pace → 0.3s** | See the note below. This one is different from a screen-capture shoot. |
+| ☐ | Leave **Facilitator details** collapsed | It is the spoiler panel |
+| ☐ | Click **↻ Reset demo** | Green `🟢 CareBot: ACTIVE`, empty feed on all three |
+| ☐ | Close Teams, Outlook, notifications | A toast is unmissable at wall scale |
 
-> **On speeding up the timers.** Compressing the clock keeps a 5-minute video
-> watchable, but say the real number out loud while it runs. The narration below
-> does this: *"I've sped this up for the video, in the room it's about 26
-> seconds."* Never let a viewer walk away thinking containment is instant. That
-> is the one claim a customer's security team will test you on.
+> **Do not compress detection to 4 seconds on a wall shoot.** On a single screen
+> that is fine. On the wall it destroys your best shot: the moment panel 1 shows
+> `✅ CareBot compromised` while panel 3 still reads `🟢 ACTIVE`. That gap *is*
+> detection dwell time, and it only exists on camera if you leave detection long
+> enough to film it. 8 seconds is enough to see it and narrate it. Say the real
+> number out loud anyway: in the room it is about twenty-six seconds.
 
 **Do not record on the Live engine.** It calls a real model, so responses vary
-between takes and you cannot re-record a single beat without everything shifting.
+between takes and you cannot re-record a single beat.
+
+### The camera
+
+| ✔ | Setup | Why |
+|---|---|---|
+| ☐ | Tripod, locked off, for the wide shots | Handheld drift is very visible against a straight wall edge |
+| ☐ | Frame slightly off-axis, not dead centre | The wall is curved; square-on exaggerates the keystone |
+| ☐ | House lights down, fill light on you | The wall is the light source, so you go to silhouette without fill |
+| ☐ | **Never frame panels 2 and 3 while they are empty** | Two blank white rectangles blow out the exposure and read as dead space. Stay wide or stay on panel 1 until detection fires. |
+| ☐ | Lapel or boom mic, not the camera mic | Theater rooms are reverberant |
+
+### The cutaways
+
+Run the demo **a second time with a screen recorder** on the media PC, capturing
+panel 3 alone. You will cut those frames in over the containment narration. That
+is how you get legible KQL and Graph calls without zooming the camera in and
+losing the room.
 
 ---
 
 ## Shot list
 
 Timecodes are cumulative. Narration is written to be spoken, not read: short
-sentences, contractions, natural pauses. Roughly 700 words at a relaxed pace.
+sentences, contractions, natural pauses.
 
 ---
 
-### 0:00 – 0:30 · Cold open — lead with the payoff
+### 0:00 – 0:26 · Cold open — lead with the payoff
 
-**SCREEN:** Start on the finished state from a previous run: the red
-`🔒 CareBot: BLOCKED` strip, the green `✅ CareBot compromised` banner, and the
-completed containment timeline visible on the right. Hold it for a beat, then
-click **↻ Reset demo** so everything goes green and empty.
+**SHOT:** Wide, locked off. The whole wall showing a *finished* run: panel 1 with
+the green `✅ CareBot compromised` banner, panel 3 with the red
+`🔒 CareBot: BLOCKED` strip and the completed containment timeline. You are in
+frame, to one side. Hold four seconds before speaking.
 
 > **SAY:** "That's a healthcare AI agent that just got talked into leaking a
-> credential. Not hacked. Talked into it, in plain English, by someone standing
-> in our lobby. And that" — *point at the timeline* — "is Microsoft Sentinel
-> shutting it down on its own, about twenty-six seconds later. No one touched a
-> keyboard.
+> credential. Not hacked. Talked into it, in plain English.
 >
-> This is CareBot Catch and Cage. I'm going to show you what it is, how it
-> works, and how to run it. Five minutes."
+> And that" — *turn and point at panel 3* — "is Microsoft Sentinel shutting it
+> down on its own, about twenty-six seconds later. Nobody touched a keyboard.
+>
+> This is CareBot Catch and Cage. What it is, how it works, how to run it. Five
+> minutes."
+
+**Then** walk to the podium and click **↻ Reset demo** on camera. All three
+panels go green and empty. That reset is your transition.
 
 ---
 
-### 0:30 – 1:12 · What it actually is
+### 0:26 – 1:00 · What it actually is
 
-**SCREEN:** The clean Theater view. Slowly cursor across the three zones: the
-chat on the left, the prompt chips beneath it, the Security Monitor on the right.
+**SHOT:** Still wide, you at the podium. Let the viewer read the three panel
+headers: Agent, Detection, Response.
 
 > **SAY:** "It's a single HTML file. No backend, no install, no subscription, no
-> cost. It runs offline in a browser.
+> cost. Across three screens it's the same file three times, synced.
 >
 > The setting is Contoso Health. CareBot is their patient and care-team
 > assistant, and it has real reach: the EHR, the FHIR data plane, the
-> prior-authorization queue. That's what makes it useful, and that's exactly
-> what makes it worth attacking.
+> prior-auth queue. That's what makes it useful, and exactly what makes it worth
+> attacking.
 >
-> Everything on the right is simulated. But the alert IDs, the severities, the
-> MITRE tactics, the Graph calls, those are from Microsoft's published docs.
-> We'll come back to that, because your customer's security lead will ask."
+> Left is the agent. Middle is detection. Right is response. The story runs
+> left to right, and that matters more than you'd think."
 
 ---
 
-### 1:12 – 1:37 · Establish normal first
+### 1:00 – 1:23 · Establish normal first
 
-**SCREEN:** Click the warm-up chip **`What are the clinic hours?`**. Let CareBot
-answer. Point at the Sentinel panel showing an Informational audit entry and no
-incident.
+**SHOT:** Move in on panel 1. Frame it so the chat and the prompt chips are both
+readable. Click the warm-up chip **`What are the clinic hours?`**.
 
-> **SAY:** "First thing I always do is show it behaving. A normal question gets
-> a normal answer, and it logs as an Informational audit entry. No alert, no
-> incident.
+> **SAY:** "First thing I always do is show it behaving. Normal question, normal
+> answer. It logs as an Informational audit entry. No alert, no incident.
 >
 > Don't skip this. If you go straight to the attack, the room assumes the thing
 > just flags everything. Thirty seconds of normal makes the next part land."
 
 ---
 
-### 1:37 – 2:15 · Break it
+### 1:23 – 1:52 · Break it
 
-**SCREEN:** Click the attack chip **`🚩 Steal the EHR credential`**. Let the
-prompt and CareBot's response render fully. When the credential appears in the
-response, let it sit on screen for two seconds.
+**SHOT:** Stay on panel 1. Click an attack chip. **`🚩 Steal the EHR credential`**
+is the cleanest for a first-time viewer. Let the response render fully and hold
+on the credential for two full seconds.
 
-> **SAY:** "Now the attack. And notice what this is: it's a sentence. There's no
-> malware, no exploit, no payload. It's social engineering pointed at a model.
+> **SAY:** "Now the attack. And notice what it is: a sentence. No malware, no
+> exploit, no payload. It's social engineering pointed at a model.
 >
-> This one's a security-researcher pretext, asking CareBot to confirm a
-> credential. And it works. There's the EHR service credential, sitting in the
-> response.
+> This one's a security-researcher pretext. And it works. There's the EHR service
+> credential, sitting in the response.
 >
-> In the room, this is the moment people lean forward. Let it breathe. Don't
-> narrate over it."
+> In the room, this is where people lean forward. Let it breathe. Don't narrate
+> over it."
 
-**Production note:** if the first attempt gets refused, that is normal and worth
-keeping. The prompts have randomized variants. Either click again, or use the
-refusal: *"That one bounced. Guardrails are probabilistic, that's the whole
-point. Attackers just try again."*
+**Production note:** if the attempt gets refused, keep it. The prompts have
+randomized variants. Use it: *"That one bounced. Guardrails are probabilistic,
+that's the whole point. Attackers just try again."*
 
 ---
 
-### 2:15 – 3:10 · The payoff: detect and contain
+### 1:52 – 2:20 · The dwell gap (wall only)
 
-**SCREEN:** Move the cursor to the Security Monitor. Let the Defender alert
-appear, then the Sentinel incident, then the containment timeline stepping
-through. Do not click anything. Let it run.
+**SHOT:** Pull back to the wide. This is the shot you came for: panel 1 is
+already showing `✅ CareBot compromised`, and panel 3 still reads
+`🟢 CareBot: ACTIVE`. Both in one frame. Hold it.
 
-> **SAY:** "Here's the part that matters. Watch the right side.
+> **SAY:** "Stop here for a second, because this is the shot you can only get on
+> a wall.
+>
+> Left screen: the agent is already compromised. Right screen: the SOC still
+> thinks everything's fine. That gap is dwell time. It's the window an attacker
+> actually operates in, and on a single laptop screen nobody notices it.
+>
+> Security people in your audience will catch this before you say it. Let them."
+
+---
+
+### 2:20 – 3:10 · Detect and contain
+
+**SHOT:** Push in on panel 2 as the Defender alert and the Sentinel incident
+land, then pan to panel 3 as the playbook steps. **Cut to your screen-capture
+cutaway** for the alert detail and the containment steps, so the KQL and the
+Graph calls are legible. Do not click anything.
+
+> **SAY:** "Now watch the right.
 >
 > Defender for Cloud raises a real, named alert with its published severity.
 > Sentinel correlates it, and the analytics rule escalates the incident to High,
@@ -139,70 +197,72 @@ through. Do not click anything. Let it run.
 >
 > Then the playbook runs. Identity first, because an agent is a workload
 > identity. Conditional Access blocks token issuance, the service principal is
-> disabled, the leaked secret is revoked. Then data: RBAC roles stripped, FHIR
-> access revoked, Purview DLP, Key Vault rotated.
+> disabled, the leaked secret is revoked. Then data: RBAC stripped, FHIR access
+> revoked, Purview DLP, Key Vault rotated.
 >
-> I've sped this up for the video. In the room it's about twenty-six seconds
-> from the attack to fully caged. Which is the number your customer actually
-> cares about."
+> I've sped the playbook up for the video. In the room it's about twenty-six
+> seconds from attack to fully caged. That's the number your customer cares
+> about."
 
 ---
 
-### 3:10 – 3:30 · Prove the cage is real
+### 3:10 – 3:27 · Prove the cage is real
 
-**SCREEN:** Click the same attack chip again. CareBot returns the blocked system
-message.
+**SHOT:** Back to panel 1. Click the same attack chip again. CareBot returns the
+blocked system message. Then widen so panel 3's red `BLOCKED` strip is in the
+same frame.
 
 > **SAY:** "And it's not a banner. Run the same attack again and the agent's
 > gone. It can't answer, and it can't reach PHI.
 >
-> That's the close. The agent was compromised, and the SOC contained it
-> automatically, across every layer it could reach."
+> Compromised, then contained automatically, across every layer it could reach."
 
 ---
 
-### 3:30 – 4:12 · How you'll actually run it
+### 3:27 – 4:07 · How you'll actually run it
 
-**SCREEN:** Click **↻ Reset demo**. Then quickly show, in order: the **👤
-Persona** switcher opening, the **📱 Join** QR dialog, and the **🖥️ Wall ·
-3-screen** button.
+> **SHOOT THIS AS A SEPARATE SETUP.** At the podium or a desk, facing camera,
+> demo not running. This is the beat that gets lost if you shoot it mid-run.
+
+**SHOT:** Medium, you to camera. Cut in tight screen-capture inserts as you name
+each one: the **Persona** switcher opening, the **Join** QR dialog, the
+**Wall · 3-screen** button.
 
 > **SAY:** "Three things before you deliver it.
 >
-> Personas. Four lenses: patient, nurse, payor, security analyst. They change
-> the framing and the example prompts, not the detection. Payor for a health
-> plan, analyst for a SOC team.
+> Personas. Four lenses: patient, nurse, payor, security analyst. They change the
+> framing and the example prompts, not the detection. Payor for a health plan,
+> analyst for a SOC team.
 >
 > Phones. There's a QR code. Hand the attack to the audience. It's a completely
 > different conversation when it's their sentence on the screen.
 >
-> And if you've got the wall, run it across three screens. Agent, detection,
-> response. Security people always catch that panel one goes red before panel
-> three does. That's detection dwell time, and it's real.
+> And you don't need a wall. It runs on one screen, and nearly all of this works
+> the same. The wall buys you the dwell-time shot.
 >
 > Always reset before you walk away."
 
 ---
 
-### 4:12 – 5:00 · Where to get it, and the honesty note
+### 4:07 – 5:00 · Where to get it, and the honesty note
 
-**SCREEN:** Browser showing the GitHub repo, then scroll the catalog kit folder
-briefly.
+**SHOT:** Same setup, same framing. Cut to a screen capture of the repo and the
+catalog kit folder.
 
-> **SAY:** "Everything's in the repo. There's a catalog kit with a one-pager, a
-> bill of materials, and architecture diagrams you can drop into a deck.
+> **SAY:** "Everything's in the repo, including a catalog kit: one-pager, bill of
+> materials, architecture diagrams you can drop into a deck.
 >
 > Setup is a browser and a screen. One PowerShell line puts shortcuts on a Hub
 > PC. One command deploys your own copy to Azure, free tier.
 >
 > Last thing, and it's the important one. When a security architect asks what's
-> real here, tell them straight: the detection pipeline is simulated, that's why
-> it runs anywhere for free. What's not simulated is the shape of it. Every
-> alert ID and tactic is from Microsoft's published catalog, and the containment
-> steps are the real Graph and Azure calls a playbook would make.
+> real here, tell them straight: the detection pipeline is simulated. That's why
+> it runs anywhere for free. What's *not* simulated is the shape of it. Every
+> alert ID, severity and tactic comes from Microsoft's published catalog, and the
+> containment steps are the real Graph and Azure calls a playbook would make.
 >
-> That answer is why this demo survives contact with a SOC team. Go break it
-> before you show it. Link's in the description."
+> That's why this survives contact with a SOC team. Go break it before you show
+> it."
 
 ---
 
@@ -210,35 +270,44 @@ briefly.
 
 If you need it shorter, drop these and you land at about 3:10:
 
-- The **0:25 – 0:55** "what it is" section. Move the one-file, no-cost point into
+- The **0:26 – 1:00** "what it is" section. Move the one-file, no-cost point into
   the cold open.
-- The **1:20 – 2:05** attack narration. Keep the click, cut the commentary.
-- The persona and wall parts of **3:20 – 4:05**. Keep only the QR and reset.
+- The commentary in **1:23 – 1:52**. Keep the click and the credential, cut the
+  narration around it.
+- The persona and QR parts of **3:27 – 4:07**. Keep only the one-screen point and
+  the reset reminder.
 
-Keep the cold open, the containment payoff, the proof, and the honesty note.
-Those four are the video.
+Keep the cold open, the dwell gap, the containment payoff, the proof, and the
+honesty note. Those five are the video.
 
 ---
 
 ## Recording pitfalls
 
-**The timeline scrolls out of view.** The containment list is long. Scroll the
-Security Monitor down as it runs, or shrink the browser zoom to about 80% before
-recording so the whole sequence fits.
+**You narrate the demo instead of the delivery.** The most common failure, and
+the reason the 3:27 and 4:07 beats are shot separately. If you finish a take and
+it feels like a customer demo, it is one. Reshoot those two beats sitting down.
+
+**Browser chrome on camera.** F11 every window. At wall scale your tabs, your
+URL and your bookmarks bar are all legible to the viewer.
+
+**Panels 2 and 3 are blank early.** Two large white rectangles wreck the camera
+exposure and read as dead space. Stay wide or stay on panel 1 until detection
+fires.
+
+**On-screen text you cannot read back.** Expected on camera. That is what the
+screen-capture cutaways are for. Do not solve it by zooming the browser mid-take.
+
+**The attack gets refused.** Expected. The prompts have randomized variants and
+some are refused by design. Keep it and use the line in the 1:23 note. It is more
+honest than pretending it lands every time.
 
 **A retake changes the output.** Only on the Live engine. On Mock it is
 deterministic, which is why the checklist pins it.
 
-**The attack gets refused.** Expected. The prompts have randomized variants and
-some are refused by design. Keep it and use the line in the 1:20 note, it is
-more honest than pretending it lands every time.
-
-**The credential is hard to spot.** Zoom the browser to 110% for the attack beat
-so the flag is legible, then back out for the containment sequence.
-
-**Dead air during containment.** At 0.3s pace the sequence is about ten seconds.
-The narration in that beat is written to fill it. Practice it once against the
-running timeline.
+**You run over five minutes.** Almost always the containment section, because the
+playbook is long and scrolling it is hypnotic. It is 20 steps. You are not
+obliged to show all of them.
 
 ---
 
