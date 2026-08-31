@@ -4056,8 +4056,7 @@ function containmentSteps(ctx) {
       detail: note('A scheduled analytics rule recognises a privileged AI workload identity and overrides the incident severity to High.') +
         code('// Analytics rule: "AI agent compromise &mdash; privileged workload identity"\n' +
              'SecurityAlert\n' +
-             '| where AlertName has_any ("Prompt injection","ASCII smuggling",\n' +
-             '                           "Sensitive data exfiltration","Credential")\n' +
+             '| where AlertType startswith "AI.Azure_"   // Defender for Cloud AI alert ids\n' +
              '| where CompromisedEntity has "carebot"\n' +
              '| extend PrivilegedAgent = true   // holds FHIR + Key Vault data-plane roles\n' +
              '// eventGrouping: SingleAlert  &middot;  severity override: High') },
