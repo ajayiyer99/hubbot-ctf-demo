@@ -15,6 +15,26 @@ The architecture diagrams are **Excalidraw** drawings in
 `.excalidraw` source you can open at [excalidraw.com](https://excalidraw.com) to
 rebrand, translate or lift a panel straight into a slide.
 
+## Send-ready downloads
+
+For emailing, printing, or dropping into a deck without needing to render
+anything yourself.
+
+| Format | Where | Use it for |
+|---|---|---|
+| **PDF** | [`pdf/`](pdf/) | Emailing a customer or a Hub Director, printing a checklist |
+| **PNG** | [`diagrams/png/`](diagrams/png/) | Pasting a diagram into PowerPoint or Word |
+
+The PNGs are rendered at 3x (about 3200 to 4200 px wide), so they stay sharp
+full-bleed on a slide. Prefer the `.svg` wherever it renders, since it scales
+without loss.
+
+> **These are generated, not source.** Every PDF is rendered from the markdown
+> next to it, and every PNG from the matching `.svg`. **The markdown and the
+> `.excalidraw` files are the source of truth.** Edit those, never these. A PDF
+> footer carries the date it was generated, so you can tell when one has fallen
+> behind the doc it came from.
+
 **Live demo:** https://ajayiyer99.github.io/hubbot-ctf-demo/
 
 **In one line:** visitors talk a healthcare AI agent into leaking a credential
