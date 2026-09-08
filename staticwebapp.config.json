@@ -1,6 +1,5 @@
 {
   "auth": {
-    "rolesSource": "/.auth/me",
     "identityProviders": {
       "customOpenIdConnectProviders": {
         "entraid": {
