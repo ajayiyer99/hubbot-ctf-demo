@@ -29,6 +29,12 @@ The PNGs are rendered at 3x (about 3200 to 4200 px wide), so they stay sharp
 full-bleed on a slide. Prefer the `.svg` wherever it renders, since it scales
 without loss.
 
+> **Download the PDFs, do not preview them here.** Every cross-reference in
+> them is a working hyperlink, but GitHub shows a PDF inside a sandboxed
+> viewer where links do not fire, so previewing one in the browser makes them
+> all look dead. Download the file and open it in Acrobat, Edge or any normal
+> reader and they work. Nothing is wrong with the file.
+
 > **These are generated, not source.** Every PDF is rendered from the markdown
 > next to it, and every PNG from the matching `.svg`. **The markdown and the
 > `.excalidraw` files are the source of truth.** Edit those, never these. A PDF
