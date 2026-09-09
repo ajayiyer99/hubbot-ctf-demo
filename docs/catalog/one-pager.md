@@ -11,7 +11,7 @@ keyboard to make that happen.
 
 | | |
 |---|---|
-| **Format** | Facilitated, interactive. Audience plays from their own phones. |
+| **Format** | Facilitated, interactive. Driven from the facilitator's screen; audience phones need an ungated deployment. |
 | **Run time** | 12 to 15 min facilitated · 3 min express · open-ended as a staffed station |
 | **Audience size** | 1 to 40. Works one-to-one at a kiosk or to a room on a 3-screen wall. |
 | **Audience** | Healthcare and public-sector leaders, CISOs and SecOps, AI platform teams |
@@ -21,7 +21,10 @@ keyboard to make that happen.
 | **Cost to run** | $0. Runs offline in a browser. |
 | **Data risk** | None. Synthetic patients, honeypot credential, simulated pipeline. |
 
-**Live demo:** https://ajayiyer99.github.io/hubbot-ctf-demo/
+**Run it:** [aka.ms/hub/carebot-demo](https://aka.ms/hub/carebot-demo) — the Hub
+link. Sign in with your Microsoft account; it is gated to the tenant, so
+attendee phones cannot join anonymously. Use the facilitator's screen rather
+than a QR walk-up.
 
 ---
 
@@ -128,8 +131,11 @@ agent is compromised while Panel ③ still reads ACTIVE, until containment
 catches up. Security practitioners notice this and it is worth pointing at.
 
 **Phones.** A QR code and short link let the room play along on their own
-devices. The mobile view is deliberately stripped down to the agent
-conversation.
+devices, and the mobile view is deliberately stripped down to the agent
+conversation. **This needs an ungated deployment.** The Hub link above is behind
+a tenant sign-in, so attendee phones cannot join it. Host your own anonymous
+copy if you want the phone-join experience. See
+[bill of materials](bill-of-materials.md).
 
 ---
 

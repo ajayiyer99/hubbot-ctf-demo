@@ -235,7 +235,8 @@ each one: the **Persona** switcher opening, the **Join** QR dialog, the
 > analyst for a SOC team.
 >
 > Phones. There's a QR code. Hand the attack to the audience. It's a completely
-> different conversation when it's their sentence on the screen.
+> different conversation when it's their sentence on the screen. That one needs
+> an ungated copy, since the Hub link asks for a sign-in.
 >
 > And you don't need a wall. It runs on one screen, and nearly all of this works
 > the same. The wall buys you the dwell-time shot.
@@ -247,13 +248,15 @@ each one: the **Persona** switcher opening, the **Join** QR dialog, the
 ### 4:07 – 5:00 · Where to get it, and the honesty note
 
 **SHOT:** Same setup, same framing. Cut to a screen capture of the repo and the
-catalog kit folder.
+catalog kit folder, then to the Hub link.
 
-> **SAY:** "Everything's in the repo, including a catalog kit: one-pager, bill of
+> **SAY:** "It's at aka.ms/hub/carebot-demo. Sign in and it's ready.
+>
+> Everything else is in the repo: a catalog kit with a one-pager, bill of
 > materials, architecture diagrams you can drop into a deck.
 >
-> Setup is a browser and a screen. One PowerShell line puts shortcuts on a Hub
-> PC. One command deploys your own copy to Azure, free tier.
+> Setup is a browser and a screen. One command deploys your own copy to Azure,
+> free tier.
 >
 > Last thing, and it's the important one. When a security architect asks what's
 > real here, tell them straight: the detection pipeline is simulated. That's why
@@ -263,6 +266,9 @@ catalog kit folder.
 >
 > That's why this survives contact with a SOC team. Go break it before you show
 > it."
+
+**On screen:** put `aka.ms/hub/carebot-demo` in the lower third here, and in the
+video description. It is the one thing a viewer needs to write down.
 
 ---
 

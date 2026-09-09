@@ -17,12 +17,18 @@ This runs the full demo. Nothing else is required.
 | Main PC | Windows 10/11, 8 GB RAM | Existing |
 | Browser | Edge, current version | $0 |
 | Display | Envisioning Theater display | Existing |
+| URL | [aka.ms/hub/carebot-demo](https://aka.ms/hub/carebot-demo), sign in with your Microsoft account | $0 |
 | Network | To load the page once. Runs offline after that. | $0 |
 | Software | None. No install, no runtime, no dependencies. | $0 |
 | Azure | None. Nothing is provisioned. | **$0** |
 | Model cost | None in the default Mock engine. | **$0** |
 
 **Setup time:** open the URL and go full screen. Under a minute.
+
+> **The Hub link is tenant gated.** You sign in once on the Main PC and it is
+> remembered. Attendee phones cannot join it anonymously, so run the demo from
+> the room's screen. If you specifically want the phone-join QR, host an
+> anonymous copy of your own.
 
 > **Why it is this light.** The app is a single self-contained `index.html`. No
 > backend, no build step, no package manager. The Microsoft pipeline it shows is
