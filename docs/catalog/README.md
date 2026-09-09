@@ -41,7 +41,9 @@ without loss.
 > footer carries the date it was generated, so you can tell when one has fallen
 > behind the doc it came from.
 
-**Live demo:** https://ajayiyer99.github.io/hubbot-ctf-demo/
+**Run it:** [aka.ms/hub/carebot-demo](https://aka.ms/hub/carebot-demo) — the Hub
+link. Sign in with your Microsoft account; it is gated to the tenant, so
+attendee phones cannot join anonymously.
 
 **In one line:** visitors talk a healthcare AI agent into leaking a credential
 or dumping patient records using nothing but plain English, then watch Microsoft

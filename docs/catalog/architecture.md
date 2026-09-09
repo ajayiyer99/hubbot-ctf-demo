@@ -140,14 +140,17 @@ Three ways to run it, in increasing order of control.
 
 | Path | Use it when | Cost |
 |---|---|---|
+| **The Hub link** | Delivering it as a Hub SE. [aka.ms/hub/carebot-demo](https://aka.ms/hub/carebot-demo), Entra gated | $0 to you |
 | **GitHub Pages** | You just want to run the demo | $0 |
 | **Hub PC shortcuts** | A dedicated kiosk or wall PC, with an offline backup copy | $0 |
 | **Azure SWA, anonymous** | You want your own hostname and URL control | $0, Free plan |
 | **Azure SWA, Entra gated** | Internal-only audiences | About $9/mo, Standard plan |
 
 > **Choosing the gate.** A tenant gate blocks anonymous phone joins, so the QR
-> experience stops working for anyone outside your tenant. For a walk-up Hub
-> floor, stay anonymous. Detail in [azure-deploy-scripts.md](../azure-deploy-scripts.md).
+> experience stops working for anyone outside your tenant. The shared Hub link
+> is gated, which is the right call for a facilitator-driven room and the wrong
+> one for a walk-up floor: for that, host an anonymous copy. Detail in
+> [azure-deploy-scripts.md](../azure-deploy-scripts.md).
 
 ---
 
