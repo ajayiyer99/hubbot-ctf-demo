@@ -3467,8 +3467,31 @@ var qrcode = function() {
    ============================================================ */
 
 // ---------- Version ----------
-const APP_VERSION = "0.1.0";
-const APP_BUILD_DATE = "2026-07-06";
+// APP_VERSION is curated by hand. Bump it when you want to mark a release.
+//
+// The build date is deliberately NOT hand-maintained. It is read from
+// document.lastModified, which reflects the Last-Modified header of this file,
+// so it updates on every deploy with no build step and cannot silently go
+// stale. That matters here: this pill previously read "v0.1.0 · 2026-07-06" for
+// two months and 54 commits, because a hardcoded date only stays honest if
+// somebody remembers to edit it, and nobody ever does.
+//
+// APP_RELEASED is only the fallback for a host that sends no Last-Modified.
+const APP_VERSION  = "0.2.0";
+const APP_RELEASED = "2026-09-09";
+
+// Deployed build date of this file, as YYYY-MM-DD in local time.
+// Per the HTML spec a browser returns the CURRENT time from document.lastModified
+// when the response has no Last-Modified header, which would make every screen
+// claim it was built today. Anything within a minute of now is treated as that
+// missing-header case and falls back to the baked-in date.
+function buildDate() {
+  const t = Date.parse(document.lastModified);
+  if (isNaN(t) || Math.abs(Date.now() - t) < 60000) return APP_RELEASED;
+  const d = new Date(t);
+  const p = (n) => String(n).padStart(2, "0");
+  return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate());
+}
 
 // ---------- Per-Hub config (defaults = STL; override in Settings / localStorage) ----------
 // These mirror config/hub.<id>.json. Only VALUES change per Hub.
@@ -5719,7 +5742,15 @@ function init() {
   document.addEventListener("click", scheduleLobbyIdleReset, true);
   document.addEventListener("keydown", scheduleLobbyIdleReset, true);
 
-  document.getElementById("appVersion").textContent = "v" + APP_VERSION + " · " + APP_BUILD_DATE;
+  // Version pill: curated semver plus the automatic deploy stamp. The tooltip
+  // carries the full timestamp and the host, which is how you tell two
+  // deployments apart when both were published on the same day, or spot a
+  // screen still serving an old build.
+  const verEl = document.getElementById("appVersion");
+  verEl.textContent = "v" + APP_VERSION + " · " + buildDate();
+  verEl.title = "CareBot Catch & Cage v" + APP_VERSION +
+    "\nBuild: " + document.lastModified +
+    "\nServed from: " + (location.host || "local file");
   // Persona lens: honor ?persona=patient|nurse|payor|analyst (used to preset shared / wall links);
   // otherwise keep the default (nurse) and show the splash so the driver picks one.
   const PERSONA_PARAM = (new URLSearchParams(location.search).get("persona") || "").toLowerCase();

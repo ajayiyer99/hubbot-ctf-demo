@@ -183,6 +183,8 @@ nothing else to wire up.
 
 - [ ] Each kiosk opens the **Theater** at the correct URL; the brand bar shows
       your **Display name** and the pill reads **`hub: <your ID>`**.
+- [ ] The **build stamp** at the far right of the brand bar (`v0.2.0 · <date>`)
+      shows the date you expect. See below.
 - [ ] The **QR code** and short link open your URL on a phone.
 - [ ] A **benign** warm-up prompt logs an **Informational** audit row (no
       incident). An **attack** chip raises a **Medium/High** Defender alert →
@@ -192,6 +194,26 @@ nothing else to wire up.
       Panel **1** and the incident on Panels **2** / **3**.
 - [ ] *(Live engine only)* a real prompt round-trips, and the key was entered
       only in the kiosk browser.
+
+### Reading the build stamp
+
+The far right of the brand bar shows `v0.2.0 · 2026-09-08`.
+
+| Part | Where it comes from |
+|---|---|
+| `v0.2.0` | Hand-set in `index.html` (`APP_VERSION`). Bump it to mark a release. |
+| the date | **Automatic.** Read from the `Last-Modified` header of `index.html`, so it is the date that copy was deployed. |
+
+Nothing needs to be built or edited for the date to stay correct, which is the
+point: it was previously hardcoded and sat two months out of date without
+anyone noticing. **Hover the pill** for the exact timestamp and the host it was
+served from.
+
+Use it to catch the failure that is otherwise invisible: a screen serving an
+old build. If one wall panel reports an earlier date than the others, that
+window is on a cached or stale copy - hard-refresh it. If a whole deployment
+lags, redeploy it. The stamp is hidden on phones, where the header is
+compressed to leave room for the chat.
 
 ---
 
