@@ -89,7 +89,7 @@ people remember:
 - A **Microsoft Sentinel** analytics rule correlates it and escalates the
   incident to **High**, because this is a privileged AI workload identity
 - **Entra ID Protection** marks the agent a risky agent
-- A **SOAR playbook** cages it in about 26 to 28 seconds across every layer:
+- A **SOAR playbook** cages it in about 26 to 29 seconds across every layer:
   identity, data, network, and optionally compute
 
 **5. Prove it (30 seconds).** Re-run the attack that just worked. The agent is
