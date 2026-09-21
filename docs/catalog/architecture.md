@@ -56,11 +56,15 @@ patient-safety kill switch. A real SOC would put an approval in front of that
 blast radius, so it sits behind a Settings toggle. Turning it off is a good way
 to show graduated response.
 
-**On continuous access evaluation.** CAE covers single-tenant service
-principals, requires Workload Identities Premium, and does not support managed
-identities. Where it does not apply, an issued access token stays valid until it
-expires, which is exactly why the data-plane revocations matter. The demo says
-this on screen rather than implying instant revocation everywhere.
+**On continuous access evaluation.** CAE for workload identities is supported
+**only for Microsoft Graph as a resource provider**. It does not reach Azure
+Health Data Services, Key Vault or ARM. It also covers single-tenant service
+principals only, requires Workload Identities Premium, and does not support
+managed identities. So for the resources this demo actually cares about, an
+issued token stays valid until it expires. That is not a footnote, it is the
+argument for the layered cage: the data-plane revocations are the only control
+that reaches FHIR and Key Vault. The demo says this on screen rather than
+implying instant revocation everywhere.
 
 ---
 
@@ -98,8 +102,11 @@ yet it still drives a `High` incident. That is exactly how a real SOC works: you
 triage the incident, not the raw alert.
 
 **Product status.** Defender for Cloud threat protection for AI is generally
-available. Entra ID Protection for Agents is newer and licensing-gated, so it
-appears as an illustrative step rather than a live tenant call.
+available, though it scans text tokens only and is Commercial-cloud only. Entra
+ID Protection for Agents remains a `/beta` Graph endpoint, and since 1 July 2026
+AI-agent security capabilities require a **Microsoft Agent 365** license rather
+than the Defender for Cloud or Defender for Cloud Apps licenses that previously
+covered them. It appears as an illustrative step rather than a live tenant call.
 
 ---
 

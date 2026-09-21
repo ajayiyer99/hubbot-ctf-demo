@@ -4079,12 +4079,13 @@ function containmentSteps(ctx) {
       detail: note('A scheduled analytics rule recognises a privileged AI workload identity and overrides the incident severity to High.') +
         code('// Analytics rule: "AI agent compromise &mdash; privileged workload identity"\n' +
              'SecurityAlert\n' +
-             '| where AlertType startswith "AI.Azure_"   // Defender for Cloud AI alert ids\n' +
+             '| where AlertType startswith "AI."   // Defender for Cloud AI alerts:\n' +
+             '                                    // AI.Azure_* and AI.AIModelScan_*\n' +
              '| where CompromisedEntity has "carebot"\n' +
              '| extend PrivilegedAgent = true   // holds FHIR + Key Vault data-plane roles\n' +
              '// eventGrouping: SingleAlert  &middot;  severity override: High') },
     { icon: "⚠️", mark: "risky", html: 'Microsoft <b>Entra ID Protection</b> &middot; playbook calls <code>POST /identityProtection/riskyAgents/confirmCompromised</code> on agent <b>CareBot</b> (Entra Agent ID) &rarr; <b>Agent risk = High</b> &middot; <b>204</b> (risk-based Conditional Access now applies)', cls: "", key: true,
-      detail: note('The playbook raises the agent risk in Microsoft Entra ID Protection. This is the real Graph call behind the risky-agent badge.') +
+      detail: note('The playbook raises the agent risk in Microsoft Entra ID Protection. This is the real Graph call behind the risky-agent badge. It is still a /beta endpoint, and since 1 July 2026 AI-agent security capabilities require a Microsoft Agent 365 license rather than the Defender for Cloud or Defender for Cloud Apps licenses that previously covered them.') +
         code('POST https://graph.microsoft.com/beta/identityProtection/\n' +
              '     riskyAgents/confirmCompromised\n' +
              'Authorization: Bearer &lt;token&gt;      // IdentityRiskyAgent.ReadWrite.All\n' +
@@ -4135,17 +4136,21 @@ function containmentSteps(ctx) {
              '{ "keyId": "7f1c9a04-3b52-4e18-9d6a-0c2e5b7f4a91" }\n\n' +
              'HTTP/1.1 204 No Content\n' +
              '// the exfiltrated client_secret can no longer mint tokens') },
-    { icon: "⏱️", html: '<b>Identity</b> &middot; <b>Continuous access evaluation</b> &mdash; the disable event is signalled to CAE-aware resources &rarr; the token the agent already holds is rejected on its next call (<b>401</b> + claims challenge)', cls: "",
-      detail: note('Disabling a service principal is a CAE revocation event. CAE-aware resources re-evaluate mid-session and reject the token the agent is already holding, instead of honouring it until it expires.') +
+    { icon: "⏱️", html: '<b>Identity</b> &middot; <b>Continuous access evaluation</b> &mdash; the disable event is signalled to <b>Microsoft Graph</b> &rarr; the token the agent already holds is rejected on its next Graph call (<b>401</b> + claims challenge). Azure data planes are not in scope.', cls: "",
+      detail: note('Disabling a service principal is a CAE revocation event. Graph re-evaluates mid-session and rejects the token the agent already holds instead of honouring it until it expires. Note the scope: for workload identities, CAE covers Microsoft Graph only, so the FHIR and Key Vault revocations below are not a backstop for this step, they are the only mechanism that reaches those resources.') +
         code('event    : service principal disabled (accountEnabled=false)\n' +
              'signal   : continuous access evaluation &mdash; workload identities\n' +
-             'effect   : CAE-aware resource returns 401 + claims challenge on the\n' +
+             'effect   : Microsoft Graph returns 401 + claims challenge on the\n' +
              '           next call made with the existing token\n' +
-             'scope    : single-tenant service principals; requires Workload\n' +
-             '           Identities Premium. Managed identities are not supported.\n' +
-             'fallback : without CAE an already-issued access token stays valid\n' +
-             '           until it expires (typically 60-90 min) &mdash; the data-plane\n' +
-             '           revocations below are the backstop for that window') },
+             'scope    : Microsoft Graph ONLY. Single-tenant service principals,\n' +
+             '           requires Workload Identities Premium, and the app must\n' +
+             '           declare the cp1 client capability. Managed identities\n' +
+             '           are not supported.\n' +
+             'NOT      : Azure Health Data Services / FHIR, Key Vault and ARM do\n' +
+             '           not honour CAE for workload identities. A token already\n' +
+             '           issued for them stays valid until it expires (CAE tokens\n' +
+             '           are long-lived: up to 24h) &mdash; which is exactly why the\n' +
+             '           data-plane revocations below exist.') },
     { icon: "🔑", html: '<b>Data</b> &middot; Azure RBAC &mdash; removed role assignments <b>FHIR Data Contributor</b> + <b>Key Vault Secrets User</b> from the agent service principal &rarr; PHI data-plane access revoked', cls: "",
       detail: note('Strip the data-plane role assignments from the agent service principal so PHI access is revoked even if a token survives.') +
         code('az role assignment delete \\\n' +

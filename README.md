@@ -114,13 +114,15 @@ via Microsoft Graph `PATCH /servicePrincipals/{id}` with `{ "accountEnabled": fa
 — the verified Entra Agent ID disable path. Alongside it the playbook calls
 `POST /servicePrincipals/{id}/removePassword` to revoke the client secret the agent
 just leaked, so the exfiltrated credential can no longer mint tokens. Disabling the
-service principal is also a **continuous access evaluation** event, so CAE-aware
-resources reject the token the agent already holds on its next call (401 plus a claims
-challenge) instead of honouring it until it expires. CAE for workload identities covers
-single-tenant service principals and needs Workload Identities Premium; managed
-identities are not supported. Where CAE does not apply, an already-issued access token
-stays valid until expiry, and the data-plane revocations below are the backstop for
-that window. The timeline shows this identity block inside
+service principal is also a **continuous access evaluation** event, so Microsoft Graph
+rejects the token the agent already holds on its next call (401 plus a claims
+challenge) instead of honouring it until it expires. Note the scope: CAE for workload
+identities is supported **only for Microsoft Graph as a resource provider**, so it does
+not reach Azure Health Data Services, Key Vault or ARM. It also needs single-tenant
+service principals and Workload Identities Premium, and managed identities are not
+supported. For every resource CAE does not cover, an already-issued token stays valid
+until it expires, which is why the data-plane revocations below are not a backstop but
+the only mechanism that reaches those resources. The timeline shows this identity block inside
 a **scenario-aware, defense-in-depth cage**: **identity** is the floor for every
 compromise, **data** controls always run (Azure RBAC on **FHIR Data Contributor** +
 **Key Vault Secrets User**, **Azure Health Data Services** FHIR token revoke, **Microsoft
@@ -142,9 +144,11 @@ it can no longer acquire tokens for FHIR, Graph, or Key Vault. When that
 mark-risky step runs, the app pins a "risky agent" badge next to the QR join
 card (it shows on the Agent wall panel), so the identity verdict is visible on
 the room screen. This runs automatically as part of the simulated response;
-there is no manual button. The capability is new and licensing-gated (Microsoft
-Agent 365), so it is shown here as an illustrative, simulated step rather than a
-live tenant call. No live block API (Agent 365, Entra ID Protection for Agents,
+there is no manual button. Since 1 July 2026 this capability requires a **Microsoft
+Agent 365** license, rather than the Defender for Cloud or Defender for Cloud Apps
+licenses that previously covered it, so it is shown here as an illustrative,
+simulated step rather than a live tenant call. No live block API (Agent 365, Entra
+ID Protection for Agents,
 Microsoft Graph, or Azure ARM) is called from this frontend. Reference:
 Microsoft Learn, "Securing risky AI agents"
 (https://learn.microsoft.com/en-us/entra/id-protection/concept-risky-agents).

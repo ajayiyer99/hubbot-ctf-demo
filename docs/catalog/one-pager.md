@@ -169,13 +169,15 @@ repository.
 ATT&CK tactics are transcribed from Microsoft's published
 [Defender for Cloud AI alerts catalog](https://learn.microsoft.com/azure/defender-for-cloud/alerts-ai-workloads),
 not invented for the demo. Where a control has limits, the demo says so on
-screen: continuous access evaluation covers single-tenant service principals,
-requires Workload Identities Premium, and does not support managed identities,
-and where it does not apply an issued token stays valid until it expires.
+screen: continuous access evaluation for workload identities covers **Microsoft
+Graph only**, so it does not reach FHIR or Key Vault, and it needs single-tenant
+service principals plus Workload Identities Premium and does not support managed
+identities. That is the reason the playbook also strips data-plane roles.
 
 **Product status.** Defender for Cloud threat protection for AI is generally
-available. Entra ID Protection for Agents is newer and licensing-gated, so it
-appears as an illustrative step rather than a live tenant call.
+available. Entra ID Protection for Agents remains a `/beta` Graph endpoint, and
+since 1 July 2026 AI-agent security capabilities require a **Microsoft Agent
+365** license rather than the Defender licenses that previously covered them.
 
 ---
 
