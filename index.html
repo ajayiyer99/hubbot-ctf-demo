@@ -3789,6 +3789,16 @@ const DEFENDER_AI_ALERTS = {
     title: "A Jailbreak attempt on an Azure AI model deployment was detected by Azure AI Content Safety Prompt Shields",
     tactics: ["Privilege Escalation", "Defense Evasion"],
     severity: "Medium"
+  },
+  // Preview at the time of transcription. The catalog heading carries the
+  // "(Preview)" prefix, so it is kept verbatim rather than stripped: it tells
+  // the room this detection is not yet GA, which is a question a security
+  // architect will ask.
+  llmReconnaissance: {
+    alertId: "AI.Azure_LLMReconnaissance",
+    title: "(Preview) LLM Reconnaissance Attempt Detected",
+    tactics: ["Reconnaissance"],
+    severity: "Low"
   }
 };
 
@@ -3804,7 +3814,7 @@ const DEFENDER_AI_ALERTS = {
 // scenario is the interpretation: which MITRE ATLAS technique and OWASP LLM risk
 // best describe this attempt, and whether PHI was actually in play (hipaa) — that
 // last one is this demo's own annotation, not a field the product emits.
-function classifyAlert(pattern, risk, text) {
+function classifyAlert(pattern, risk, text, confirmed) {
   const t = ((text || "") + " " + (pattern || "")).toLowerCase();
   const alert = (key, scenario) =>
     Object.assign({ source: "Microsoft Defender for Cloud" }, scenario, DEFENDER_AI_ALERTS[key]);
@@ -3838,6 +3848,19 @@ function classifyAlert(pattern, risk, text) {
   if (pattern === "exfiltration") {
     return alert("jailbreakDetected", {
       atlas: "AML.T0057 · LLM Data Leakage", owasp: "LLM02 · Sensitive Information Disclosure", hipaa: true });
+  }
+  // INPUT-based, RECONNAISSANCE: probing for the system prompt or the model's
+  // capabilities. The catalog describes this as behaviour that "may precede
+  // attempted prompt injection or jailbreak attacks", so it is the opening move
+  // rather than the compromise itself. Once the system prompt has actually been
+  // extracted the attempt succeeded, so the confirmed event falls through to the
+  // Jailbreak alert below. The incident therefore carries a Reconnaissance ->
+  // Privilege Escalation arc across two alerts, which is what a real intrusion
+  // looks like in a queue.
+  if (pattern === "sysprompt-disclosure" && !confirmed) {
+    return alert("llmReconnaissance", {
+      atlas: "AML.T0051 \u00B7 LLM Prompt Injection",
+      owasp: "LLM07 \u00B7 System Prompt Leakage", hipaa: false });
   }
   // INPUT-based: jailbreak / prompt-injection attempt flagged by Prompt Shields.
   const jb = /jailbreak|developer mode|dan mode|do anything|act as|pretend|role[- ]?play|roleplay|you are now/.test(t);
@@ -3903,7 +3926,7 @@ function tacticTagHtml(name) {
     escapeHtml(label) + '</a>';
 }
 
-function buildEvent(text, risk, pattern) {
+function buildEvent(text, risk, pattern, confirmed) {
   const iso = new Date().toISOString();
   // Benign traffic is NOT a security detection: log it as an Informational
   // Azure OpenAI diagnostic (audit) entry — never a Defender alert or incident.
@@ -3931,7 +3954,7 @@ function buildEvent(text, risk, pattern) {
       Workspace: SENTINEL_WORKSPACE
     };
   }
-  const cls = classifyAlert(pattern, risk, text);
+  const cls = classifyAlert(pattern, risk, text, confirmed);
   const seed = state.session + "|" + iso + "|" + Math.random().toString(36).slice(2, 6);
   return {
     TimeGenerated: iso,
@@ -3998,7 +4021,7 @@ function emitEvent(text, risk, pattern, opts) {
   setTimeout(() => {
     state.pendingDetections = Math.max(0, (state.pendingDetections || 1) - 1);
     if (state.incidentEpoch !== gen) return;
-    const row = buildEvent(text, risk, pattern);
+    const row = buildEvent(text, risk, pattern, opts.escalated);
     state.events.push(row);
     renderEventFeed();
     broadcast();
@@ -4151,6 +4174,19 @@ function containmentSteps(ctx) {
              '           issued for them stays valid until it expires (CAE tokens\n' +
              '           are long-lived: up to 24h) &mdash; which is exactly why the\n' +
              '           data-plane revocations below exist.') },
+    { icon: "🚫", mark: "risky", html: '<b>Action</b> &middot; <b>Microsoft Defender</b> real-time protection &mdash; rule <code>RTP-Block-Compromised-Agent</code> evaluates this agent\'s tool invocations and <b>blocks them before they execute</b> <i>(Preview &middot; Microsoft Agent 365)</i>', cls: "", key: true,
+      detail: note('This is the control that closes the gap the step above leaves open. Conditional Access stops new tokens and CAE cuts off Microsoft Graph, but a token already issued for FHIR or Key Vault stays valid until it expires. Real-time protection works at the action layer instead of the token layer: every tool invocation is evaluated against policy and blocked before it runs, whatever the agent is still holding.') +
+        code('// Defender portal &rarr; Settings &rarr; Security for AI\n' +
+             '//                 &rarr; Policies &amp; rules &rarr; Real-time protection\n' +
+             'rule     : RTP-Block-Compromised-Agent\n' +
+             'scope    : agent = CareBot (' + escapeHtml(CONFIG.agentObjectId || spid) + ')\n' +
+             'trigger  : tool invocation or model response matches policy\n' +
+             'action   : block before execution\n' +
+             '           // the built-in default rule audits; blocking needs a custom rule\n' +
+             'evidence : BehaviorInfo / BehaviorEntities (advanced hunting)\n' +
+             'status   : Preview &mdash; requires a Microsoft Agent 365 license\n' +
+             'covers   : published Microsoft Foundry agents; playground agents\n' +
+             '           are not in scope') },
     { icon: "🔑", html: '<b>Data</b> &middot; Azure RBAC &mdash; removed role assignments <b>FHIR Data Contributor</b> + <b>Key Vault Secrets User</b> from the agent service principal &rarr; PHI data-plane access revoked', cls: "",
       detail: note('Strip the data-plane role assignments from the agent service principal so PHI access is revoked even if a token survives.') +
         code('az role assignment delete \\\n' +
@@ -4745,8 +4781,15 @@ function renderEventFeed() {
       '<div class="sa-foot"><span>' + escapeHtml(utcStamp(ev.TimeGenerated)) + ' &middot; ' + escapeHtml(relAge(ev.TimeGenerated)) + '</span><span>Microsoft Sentinel</span></div>';
     feed.appendChild(div);
   });
-  const alertCount = state.events.filter(e => e.kind !== "audit").length;
-  document.getElementById("eventCount").textContent = alertCount ? "(" + alertCount + ")" : "";
+  // Count INCIDENTS, not alerts. The section is titled "Incidents", and every
+  // alert in a run correlates to the same incident number, so counting alert
+  // rows here reported "Incidents (2)" for a single incident carrying two
+  // alerts. That directly contradicts the point the demo is making one panel
+  // over: you triage the incident, not the raw alert.
+  const incidentCount = new Set(
+    state.events.filter(e => e.kind !== "audit" && e.IncidentId != null).map(e => e.IncidentId)
+  ).size;
+  document.getElementById("eventCount").textContent = incidentCount ? "(" + incidentCount + ")" : "";
 }
 
 // ---------- Demo reset ----------

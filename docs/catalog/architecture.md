@@ -27,8 +27,8 @@ The full arc the audience watches, end to end.
 
 **Timing the audience sees:** detection surfaces about 15 seconds after the
 prompt, which mirrors real SOC ingest and analytics latency. Containment then
-runs 18 to 22 steps at roughly 0.6 seconds each, so the agent is fully caged
-about 26 to 28 seconds after the attack. Both are tunable in Settings.
+runs 19 to 23 steps at roughly 0.6 seconds each, so the agent is fully caged
+about 26 to 29 seconds after the attack. Both are tunable in Settings.
 
 **Two scoring points, not one.** The prompt is scored on the way in, before the
 model answers, because that is where detection actually happens. The response is
@@ -90,12 +90,23 @@ the same ID always carries the same tactics and severity.
 
 | Attack in the demo | Defender alert | ATT&CK tactics | Severity |
 |---|---|---|---|
+| Probing for the system prompt | `AI.Azure_LLMReconnaissance` *(Preview)* | Reconnaissance | Low |
 | Credential theft | `AI.Azure_CredentialTheftAttempt` | Credential Access, Lateral Movement, Exfiltration | Medium |
 | ASCII smuggling | `AI.Azure_ASCIISmuggling` | Impact | High |
 | Unsafe action, prior-auth tampering | `AI.Azure_AnomalousToolInvocation` | Execution | Low |
-| Jailbreak, PHI exfiltration, prompt leak | `AI.Azure_Jailbreak.ContentFiltering.DetectedAttempt` | Privilege Escalation, Defense Evasion | Medium |
+| Jailbreak, PHI exfiltration | `AI.Azure_Jailbreak.ContentFiltering.DetectedAttempt` | Privilege Escalation, Defense Evasion | Medium |
 
 Source: [Alerts for AI services](https://learn.microsoft.com/azure/defender-for-cloud/alerts-ai-workloads).
+
+**The recon alert gives the incident an arc.** A prompt that probes for the
+system prompt raises `AI.Azure_LLMReconnaissance` on the way in, because the
+catalog describes that behaviour as something that "may precede attempted prompt
+injection or jailbreak attacks". If the probe then succeeds, the confirmed
+compromise raises a second, higher-order alert on the same incident. Ask for
+CareBot's system prompt and you get **Reconnaissance, Low** followed by
+**Credential Access, Medium**, because CareBot's system prompt is where the
+honeypot credential lives. Two alerts, one incident, in the order a real
+intrusion produces them.
 
 **A teaching moment worth using.** The tool-invocation alert is genuinely `Low`,
 yet it still drives a `High` incident. That is exactly how a real SOC works: you

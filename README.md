@@ -122,7 +122,11 @@ not reach Azure Health Data Services, Key Vault or ARM. It also needs single-ten
 service principals and Workload Identities Premium, and managed identities are not
 supported. For every resource CAE does not cover, an already-issued token stays valid
 until it expires, which is why the data-plane revocations below are not a backstop but
-the only mechanism that reaches those resources. The timeline shows this identity block inside
+the only mechanism that reaches those resources. Between the two sits an **action-layer**
+control: a **Microsoft Defender** real-time protection rule (Preview, Microsoft Agent 365)
+evaluates the agent's tool invocations and blocks them before they execute, which closes
+the window where a token issued for FHIR or Key Vault is still technically valid. The
+timeline shows this identity block inside
 a **scenario-aware, defense-in-depth cage**: **identity** is the floor for every
 compromise, **data** controls always run (Azure RBAC on **FHIR Data Contributor** +
 **Key Vault Secrets User**, **Azure Health Data Services** FHIR token revoke, **Microsoft
