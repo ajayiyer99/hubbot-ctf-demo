@@ -52,7 +52,7 @@ you sliding back into demo narration.
 | ☐ | Engine pill reads **`engine: mock`** | Deterministic, so you can re-record one beat |
 | ☐ | **Settings → Detection latency → 8s**, **Response pace → 0.3s** | See the note below. This one is different from a screen-capture shoot. |
 | ☐ | Leave **Facilitator details** collapsed | It is the spoiler panel |
-| ☐ | Click **↻ Reset demo** | Green `🟢 CareBot: ACTIVE`, empty feed on all three |
+| ☐ | Click **↻ Reset demo** | Green `🟢 CareBot: ACTIVE`, empty feed on all three. The pinned `?persona=nurse&intro=0` keeps it gate-free, so no story screen interrupts a take. |
 | ☐ | Close Teams, Outlook, notifications | A toast is unmissable at wall scale |
 
 > **Do not compress detection to 4 seconds on a wall shoot.** On a single screen
