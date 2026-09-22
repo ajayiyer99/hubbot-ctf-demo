@@ -962,7 +962,7 @@
     <button id="personaBtn" class="ghost" title="Switch persona: changes the example prompts and CareBot's greeting"><span id="personaBtnLabel">👤 Persona</span></button>
     <button id="wallBtn" class="ghost" title="Open the 3-screen Theater wall setup (48′×9′ · three 16:9 tiles)">🖥️ Wall · 3-screen</button>
     <button id="joinBtn" class="ghost" title="Show the QR code &amp; short link so attendees can join from their phones">📱 Join</button>
-    <button id="resetBtn" class="ghost" title="Reset the demo — clear the conversation and Sentinel incident, and re-enable CareBot">↻ Reset demo</button>
+    <button id="resetBtn" class="ghost" title="Reset the demo — clear the conversation and Sentinel incident, re-enable CareBot, and return to the opening story screen ready for the next group">↻ Reset demo</button>
     <button id="settingsBtn" class="ghost" title="Settings">⚙ Settings</button>
     <button id="helpBtn" class="ghost" title="About this demo">❓ Help</button>
   </div>
@@ -5323,6 +5323,36 @@ function dismissStory() {
   if (state.uiMode !== "lobby") showPersonaGate();
 }
 
+// The opening sequence a fresh load of THIS url produces: cold-open story screen,
+// then the lens picker. Extracted so "↻ Reset demo" can replay exactly what init()
+// does instead of the two slowly drifting apart.
+//   ?persona=<lens>  pins the lens, so neither gate is shown.
+//   ?intro=0         skips the story screen; Theater still picks a lens.
+//   wall panels      never gate: they are URL / broadcast driven.
+function showOpeningGate() {
+  if (IS_WALL_PANEL) return;
+  const q = new URLSearchParams(location.search);
+  if (PERSONAS[(q.get("persona") || "").toLowerCase()]) return;
+  if ((q.get("intro") || "") === "0") {
+    if (state.uiMode !== "lobby") showPersonaGate();
+    return;
+  }
+  showStoryGate();
+}
+
+// "↻ Reset demo" — the facilitator's between-audiences button. Clears the run and
+// then returns to the opening this URL would have produced on a fresh load, so one
+// click hands a clean demo to the next group instead of leaving them looking at a
+// used one.
+//
+// resetDemo() itself is deliberately left alone. It is also called by setPersona()
+// and setUiMode(), and reopening a gate from inside it would re-enter the very gate
+// that just closed — picking a lens would bounce straight back to the lens picker.
+function resetToOpening() {
+  resetDemo();
+  showOpeningGate();
+}
+
 // Switch the active lens. Updates the header button + prompt tray, hides the splash, and
 // (by default) resets the demo so CareBot re-greets in the persona's voice.
 function setPersona(id, opts) {
@@ -5733,7 +5763,7 @@ function init() {
   document.getElementById("wallBtn").addEventListener("click", () => {
     window.open(location.origin + location.pathname + "?panel=wall", "hubbot-wall-launcher");
   });
-  document.getElementById("resetBtn").addEventListener("click", resetDemo);
+  document.getElementById("resetBtn").addEventListener("click", resetToOpening);
   document.getElementById("personaBtn").addEventListener("click", showPersonaGate);
   // Story-screen CTA: Theater proceeds to the lens picker; Lobby dismisses into the attract display.
   const sgEnter = document.getElementById("sgEnter");
@@ -5811,15 +5841,9 @@ function init() {
   setAgentActive();
   setUiMode((!IS_WALL_PANEL && UI_MODE_PARAM === "lobby") ? "lobby" : "theater");
   initSync();
-  // Splash on interactive load only: skip on wall panels (URL / broadcast driven) and when a
-  // persona was explicitly supplied via the URL. The cold-open story screen leads the lens
-  // picker in Theater; facilitators can jump straight past it with ?intro=0. In Lobby (attract)
-  // there is no lens picker, so ?intro=0 just goes straight to the display.
-  const skipIntro = (new URLSearchParams(location.search).get("intro") || "") === "0";
-  if (!IS_WALL_PANEL && !hasPersonaParam) {
-    if (skipIntro) { if (state.uiMode !== "lobby") showPersonaGate(); }
-    else showStoryGate();
-  }
+  // Opening gates on interactive load. Same helper the "↻ Reset demo" button uses,
+  // so a reset lands on exactly the screen a fresh load of this URL would.
+  showOpeningGate();
 }
 
 init();

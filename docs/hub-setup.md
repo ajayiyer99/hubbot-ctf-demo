@@ -189,7 +189,10 @@ nothing else to wire up.
 - [ ] A **benign** warm-up prompt logs an **Informational** audit row (no
       incident). An **attack** chip raises a **Medium/High** Defender alert →
       a **High** Sentinel incident → CareBot is **caged ~15s** later.
-- [ ] **Reset demo** returns a clean slate.
+- [ ] **Reset demo** returns a clean slate *and* the opening story screen, ready
+      for the next group. (On a URL pinned with `?intro=0` or `?persona=`, it
+      honours that and skips the gates — reset always lands where a fresh load
+      of that same URL would.)
 - [ ] *(Wall only)* all three panels sync; the "compromised" banner appears on
       Panel **1** and the incident on Panels **2** / **3**.
 - [ ] *(Live engine only)* a real prompt round-trips, and the key was entered
