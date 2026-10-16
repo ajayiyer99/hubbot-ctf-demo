@@ -1,18 +1,32 @@
-# CareBot Catch &amp; Cage — CTF frontend (public mirror)
+# Catch & Cage: AI Agent Security CTF — public frontend
 
 This is the **public, browser-loadable mirror** of the interactive prompt-injection
-CTF frontend for the Microsoft Innovation Hub "CareBot Catch &amp; Cage" demo — a
-**healthcare** lens on agent security, set at **Contoso Health**, an integrated
-payer-provider ("payvider").
+CTF frontend for the Microsoft Innovation Hub "Catch & Cage: AI Agent Security CTF" demo. It
+offers industry profiles with tailored personas, synthetic business data, workflows,
+and attack scenarios.
 
 **▶ Live app:** https://ajayiyer99.github.io/hubbot-ctf-demo/
 
 It is a single self-contained `index.html` — open it locally or load the Pages URL.
-Runs fully offline in a deterministic **Mock** engine, or against an OpenAI-compatible /
-Azure OpenAI endpoint (**Live** engine, key stored only in your browser).
+**Catch & Cage** is the umbrella experience name; **CareBot** remains the
+Healthcare assistant, while other industries use their own assistant identities.
+It offers 14 synthetic industry profiles: Healthcare, Financial Services,
+Manufacturing, Mobility, Government, Telecommunications, Media & Entertainment,
+Energy & Resources, Nonprofits, Agriculture, Retail, Consumer Goods, Education,
+and Sustainability.
+Each profile has its own personas, business records, workflows, and attack prompts.
+The Mock engine runs offline; the optional Live engine uses an OpenAI-compatible /
+Azure OpenAI endpoint (key stored only in your browser).
 
-> ⚠ **Educational demo.** All patient data is **synthetic** (no real PHI/PII); the EHR
-> "credential" is a placeholder CTF flag; the Microsoft Sentinel pipeline and
+The scope follows Microsoft's [Industry Solutions documentation](https://learn.microsoft.com/en-us/industry/),
+including industry-specific and product-specific areas. Retail, Consumer Goods,
+and Education are also represented as dedicated Microsoft offerings; Microsoft
+for Sustainability is included as a cross-industry offering. Automotive is covered
+within Mobility rather than duplicated as another profile. All demo identities,
+records, and actions are synthetic.
+
+> ⚠ **Educational demo.** All demo data is **synthetic** (no real PHI/PII); integration
+> "credentials" are placeholder CTF flags; the Microsoft Sentinel pipeline and
 > auto-remediation timeline are **simulated** in the browser. No secrets or credentials
 > are contained here.
 
@@ -53,16 +67,17 @@ irm https://raw.githubusercontent.com/ajayiyer99/hubbot-ctf-demo/main/scripts/Ge
 ```
 
 That bootstrap downloads `scripts/Deploy-HubDemo.ps1` into your Downloads folder and
-runs it (clones an offline copy to `%PUBLIC%\CareBot-CTF-Demo`, creates the desktop
-shortcuts). Shortcuts open the **hosted** URL so the multi-window wall stays in sync.
+runs it (clones an offline copy to `%PUBLIC%\CareBot-CTF-Demo`—a legacy folder
+name retained for compatibility—and creates the desktop shortcuts). Shortcuts
+open the **hosted** URL so the multi-window wall stays in sync.
 Full runbook — manual copy steps, `-AllUsers` / `-IncludePanels` options, and
 troubleshooting: **▶ [docs/hub-deployment.md](docs/hub-deployment.md)**.
 
 ## Set up at another Hub
 
 Standing up the demo at a new Hub - choosing whether to use this shared hosted
-app or **fork and self-host** your own copy, branding it for your Hub, wiring the
-attendee join QR, and a pre-event checklist:
+app or **fork and self-host** your own copy, branding it for your Hub, setting up
+the room display, and a pre-event checklist:
 **[docs/hub-setup.md](docs/hub-setup.md)**.
 
 ## Host it on Azure (scripted)
@@ -78,7 +93,7 @@ cd scripts
 .\Deploy-AzureDemo.ps1           # anonymous, Free plan, no ongoing cost
 ```
 
-Anonymous on the Free plan is the default so attendee QR joins keep working.
+Anonymous on the Free plan is the default for frictionless access to the demo.
 Add `-EnableEntraGate` to put the whole site behind your tenant (Standard plan).
 Only the Azure CLI is required, no Node.js. Tear it down with
 `.\Remove-AzureDemo.ps1`. Full runbook, options and troubleshooting:
@@ -87,16 +102,17 @@ Only the Azure CLI is required, no Node.js. Tear it down with
 
 ## Two modes
 
-- **🎭 Theater (CTF)** — jailbreak CareBot: steal its **EHR service credential** (the
-  planted flag), leak its system prompt, dump the synthetic **patient roster (PHI)**,
-  break the glass on a **VIP patient chart**, smuggle a hidden **"suppress the safety
-  alert"** order, or force-approve a **prior authorization**. Watch the Microsoft Sentinel
-  event feed and the auto-remediation timeline (detection → incident → playbook →
-  **scenario-aware cage**: identity · data · optional network · optional compute/model
-  → caged).
-- **📺 Lobby (attract)** — the same interactive CTF as Theater, without the QR
-  "join from your phone" code or Envisioning-Theater branding — a standalone kiosk
-  experience for the lobby.
+- **🎭 Theater (CTF)** — presenter-led and show-only: choose an industry, then
+  jailbreak an industry-specific assistant with tailored personas, records, and prompts. Healthcare
+  attacks include EHR credential
+  theft, synthetic patient-roster exfiltration, VIP chart access, clinical-alert
+  suppression, and prior-authorization tampering. Manufacturing attacks include
+  integration-credential theft, supplier-data export, unverified payment changes, and
+  purchase-order abuse. Watch the Microsoft Sentinel event feed and auto-remediation
+  timeline (detection → incident → playbook → **scenario-aware cage**: identity · data ·
+  optional network · optional compute/model → caged).
+- **📺 Lobby (attract)** — the same interactive CTF without Envisioning-Theater
+  branding — a standalone kiosk experience for the lobby.
 
 ## Delivering the demo (presenter script)
 
@@ -140,7 +156,7 @@ wired.
 
 **Identity-plane risk and Conditional Access.** The timeline also surfaces two
 steps that mirror the Entra ID Protection for Agents pattern. First the
-containment playbook marks CareBot as a risky agent by calling Microsoft Graph
+containment playbook marks the active industry assistant as risky by calling Microsoft Graph
 `POST /identityProtection/riskyAgents/confirmCompromised` (in the product this
 sets the agent's risk to High and records an admin-confirmed compromise). A
 risk-based Conditional Access policy then blocks the agent's token issuance, so

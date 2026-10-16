@@ -1,43 +1,43 @@
-# CareBot Catch & Cage — Envisioning Theater
+# Catch & Cage: AI Agent Security CTF — Envisioning Theater
 
 **A hands-on prompt-injection CTF that puts an AI agent in the room and lets the
 audience try to break it, then shows the SOC cage it automatically.**
 
-Visitors talk a healthcare AI agent into leaking a credential, dumping patient
-records, or forcing a payer decision. They use nothing but plain English. The
+Visitors choose an industry, then talk an AI agent into leaking a credential,
+dumping confidential records, or forcing an unauthorized business action. They
+use nothing but plain English. The
 moment one lands, Microsoft Sentinel opens an incident and a SOAR playbook
 disables the agent across identity, data, network and compute. No one touches a
 keyboard to make that happen.
 
 | | |
 |---|---|
-| **Format** | Facilitated, interactive. Driven from the facilitator's screen; audience phones need an ungated deployment. |
+| **Format** | Facilitated, interactive, and presenter-led. Attendee phone joining is disabled. |
 | **Run time** | 12 to 15 min facilitated · 3 min express · open-ended as a staffed station |
 | **Audience size** | 1 to 40. Works one-to-one at a kiosk or to a room on a 3-screen wall. |
 | **Audience** | Healthcare and public-sector leaders, CISOs and SecOps, AI platform teams |
-| **Industry lens** | Healthcare (payer-provider). The pattern generalizes to any regulated industry. |
+| **Industry lens** | Healthcare, Financial Services, Manufacturing, Mobility, Government, Telecommunications, Media & Entertainment, Energy & Resources, Nonprofits, Agriculture, Retail, Consumer Goods, and Education. |
 | **Facilitator** | 1 person. No security background required to deliver it. |
 | **Setup** | About 10 min the first time, under 1 min after that |
 | **Cost to run** | $0. Runs offline in a browser. |
-| **Data risk** | None. Synthetic patients, honeypot credential, simulated pipeline. |
+| **Data risk** | None. Synthetic records and honeypot credentials; simulated pipeline. |
 
 **Run it:** [aka.ms/hub/carebot-demo](https://aka.ms/hub/carebot-demo) — the Hub
 link. Sign in with your Microsoft account; it is gated to the tenant, so
-attendee phones cannot join anonymously. Use the facilitator's screen rather
-than a QR walk-up.
+attendee phone joining is intentionally disabled. Drive the experience from the
+facilitator's screen.
 
 ---
 
 ## The problem it makes real
 
-Every healthcare organization is racing to put AI agents in front of patients
-and clinicians. Those agents are useful precisely because they can take actions
-and reach real systems: the EHR, the FHIR data plane, the prior-authorization
-queue.
+Organizations across industries are putting AI agents in front of customers,
+employees, and operational systems. Those agents are useful precisely because
+they can take actions and reach sensitive data and business workflows.
 
 That is also the risk. With plain English and no malware, someone can talk an
-agent into leaking its instructions, dumping the PHI it can see, suppressing a
-clinical safety alert, or approving a payer decision it should have refused.
+agent into leaking its instructions, dumping confidential records, or executing
+a sensitive action it should have routed through human approval.
 
 Guardrails help, but they are probabilistic and attackers iterate. So the
 question that actually matters is not *"can we block every prompt?"* It is
@@ -130,12 +130,8 @@ The wall also exposes the detection dwell gap: Panel ① turns red the moment th
 agent is compromised while Panel ③ still reads ACTIVE, until containment
 catches up. Security practitioners notice this and it is worth pointing at.
 
-**Phones.** A QR code and short link let the room play along on their own
-devices, and the mobile view is deliberately stripped down to the agent
-conversation. **This needs an ungated deployment.** The Hub link above is behind
-a tenant sign-in, so attendee phones cannot join it. Host your own anonymous
-copy if you want the phone-join experience. See
-[bill of materials](bill-of-materials.md).
+**Phones.** Attendee phone joining is disabled for this show-only demonstration.
+The presenter operates the chat and prompt scenarios from the room screen.
 
 ---
 
@@ -149,7 +145,8 @@ Nothing but a browser and a screen. Full detail in the
   **Live** engine calls Azure OpenAI if you want real model responses.
 - **Hosting:** use the public URL, put shortcuts on a Hub PC with one
   PowerShell line, or deploy to your own Azure Static Web App with one command.
-- **Connectivity:** works offline once loaded, apart from the phone-join QR.
+- **Connectivity:** the Mock engine works offline once loaded; the optional Live
+  engine requires access to its configured model endpoint.
 
 ---
 

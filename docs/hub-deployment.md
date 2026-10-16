@@ -1,6 +1,6 @@
 # Deploy the demo to a Hub PC (desktop shortcuts)
 
-This guide gets the **CareBot @ Contoso Health** CTF demo onto an Innovation Hub PC
+This guide gets the **Catch & Cage: AI Agent Security CTF** onto an Innovation Hub PC
 with **easy‑click desktop shortcuts**. It downloads an offline copy of this public
 repo and creates shortcuts that launch the **live hosted app**.
 
@@ -22,7 +22,7 @@ repo and creates shortcuts that launch the **live hosted app**.
    ```
 
 3. When it finishes, the shortcuts are on the **Desktop**. Double‑click
-   **“CareBot CTF – Theater”** (or **Lobby (attract)** / **3‑Screen Wall**) to start.
+   **“Catch & Cage – Theater”** (or **Lobby (attract)** / **3‑Screen Wall**) to start.
 
 That one line downloads the deploy script to your **Downloads** folder and runs it,
 so there is nothing to save by hand. `irm | iex` is **not** blocked by the script
@@ -34,11 +34,11 @@ execution policy (it runs text in memory, not a file).
 
 | Item | Location |
 | --- | --- |
-| `CareBot CTF – Theater.url` | Desktop → `https://ajayiyer99.github.io/hubbot-ctf-demo/` |
-| `CareBot CTF – Lobby (attract).url` | Desktop → `…/?mode=lobby` |
-| `CareBot CTF – 3-Screen Wall.url` | Desktop → `…/?panel=wall` |
-| `CareBot CTF – Offline Copy.lnk` | Desktop → the offline repo folder |
-| Offline copy of the repo | `%PUBLIC%\CareBot-CTF-Demo` |
+| `Catch & Cage – Theater.url` | Desktop → `https://ajayiyer99.github.io/hubbot-ctf-demo/` |
+| `Catch & Cage – Lobby (attract).url` | Desktop → `…/?mode=lobby` |
+| `Catch & Cage – 3-Screen Wall.url` | Desktop → `…/?panel=wall` |
+| `Catch & Cage – Offline Copy.lnk` | Desktop → the offline repo folder |
+| Offline copy of the repo | `%PUBLIC%\CareBot-CTF-Demo` (legacy folder name retained for existing installations) |
 | Saved deploy script | `%USERPROFILE%\Downloads\Deploy-HubDemo.ps1` |
 
 Running the wall: launch **3‑Screen Wall**, then click **“Open all 3 panels”**
@@ -126,9 +126,12 @@ powershell -ExecutionPolicy Bypass -File .\hubbot-ctf-demo\scripts\Deploy-HubDem
 
 ```powershell
 # Remove the desktop shortcuts (current user)
+Get-ChildItem ([Environment]::GetFolderPath('Desktop')) -Filter 'Catch & Cage*' | Remove-Item
+# Also remove shortcuts created by older versions of the deploy script
 Get-ChildItem ([Environment]::GetFolderPath('Desktop')) -Filter 'CareBot CTF*' | Remove-Item
 # Remove the offline copy
 Remove-Item "$env:PUBLIC\CareBot-CTF-Demo" -Recurse -Force
 ```
 
-For all‑users shortcuts, delete `CareBot CTF*` from `%PUBLIC%\Desktop` (elevated).
+For all‑users shortcuts, remove both `Catch & Cage*` and legacy `CareBot CTF*`
+from `%PUBLIC%\Desktop` (elevated).

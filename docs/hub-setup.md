@@ -1,9 +1,8 @@
 # Set up the demo at your Hub
 
-This guide takes a **new Innovation Hub** from zero to a running **CareBot @
-Contoso Health** CTF, end to end: choosing how to host it, branding it for your
-Hub, wiring the attendee join QR, setting up the room, and validating before a
-live audience.
+This guide takes a **new Innovation Hub** from zero to a running **Catch & Cage:
+AI Agent Security CTF**, with Contoso Health as the default Healthcare profile.
+It covers hosting, Hub branding, room-display setup, and presenter-led validation.
 
 > **Which doc do I need?**
 > - **Setting up a Hub for the first time?** You're in the right place.
@@ -60,8 +59,8 @@ config** section:
 | --- | --- | --- |
 | **Hub ID** | `NYC` | Sets the `hub: NYC` pill and the simulated Azure resource names in the Response timeline (`hub-nyc-aoai`, `fhir-nyc-prod`, `kv-nyc-prod`, `afd-nyc-waf`, `snet-nyc-agents`) |
 | **Display name** | `Contoso Health - New York` | The brand-bar subtitle at the top of the app |
-| **Attendee join URL** | `https://aka.ms/nyc-carebot` | The QR code + type-by-hand short link shown in the Theater (see §4) |
-| **Risk threshold** | `80` | Score at/above which a confirmed attack cages CareBot (leave default) |
+| **Attendee join URL** | `https://aka.ms/nyc-carebot` | Legacy setting; attendee phone join is disabled (see §4) |
+| **Risk threshold** | `80` | Score at/above which a confirmed attack cages the active industry assistant (leave default) |
 | **Detection latency / Response pace** | `15.0s` / `0.6s` | Simulated SOC lag before the Sentinel alert, then the playbook step pace - tune live |
 | **Compute/model hard-stop** | on | Include the break-glass kill-switch containment layer (used only for High-severity smuggling) |
 
@@ -134,20 +133,11 @@ fork's GitHub page, or `git pull` from the upstream remote.
 
 ---
 
-## 4. Attendee join link + QR (both paths)
+## 4. Attendee phone join
 
-Each Hub gets its **own** short link so attendees can join the CTF from their
-phones. It's encoded in the join QR code and shown as the type-by-hand short
-link in the Theater.
-
-1. Create a short link (e.g. an **aka.ms/&lt;hub&gt;-carebot** via the internal
-   redirect portal, or an `is.gd` / `bit.ly` link) that redirects to your hosted
-   URL. Point it at `/` for the Theater, or `/?mode=lobby` for an attract kiosk.
-2. Set it as the **Attendee join URL** - in **Settings** (Path A) or
-   `DEFAULT_CONFIG.joinUrl` (Path B). Enter the full `https://…` address.
-
-The Theater renders the QR and the short link automatically from that value -
-nothing else to wire up.
+Attendee phone joining is intentionally disabled for this presenter-led,
+show-only demo. No QR code, short link, or Join button is shown in Theater or
+on the 3-screen wall; no attendee join URL needs to be configured.
 
 ---
 
@@ -169,8 +159,8 @@ nothing else to wire up.
 - **Single-screen Theater kiosk** - the **Theater** shortcut on a PC or
   touchscreen. This is the interactive CTF station.
 - **Lobby attract screen** - the **Lobby (attract)** shortcut (`?mode=lobby`) on
-  a lobby TV. Same interactive CTF as Theater, without the QR / Envisioning-
-  Theater branding - a standalone kiosk experience.
+  a lobby TV. Same interactive CTF as Theater, without Envisioning-Theater
+  branding - a standalone kiosk experience.
 - **3-screen wall (high-impact)** - one PC driving three displays. Click the
   header **Wall · 3-screen** button (or open `?panel=wall`) and send panels
   **1 (Agent) / 2 (Detection) / 3 (Response)** to the three screens, or deploy the
@@ -185,10 +175,10 @@ nothing else to wire up.
       your **Display name** and the pill reads **`hub: <your ID>`**.
 - [ ] The **build stamp** at the far right of the brand bar (`v0.2.0 · <date>`)
       shows the date you expect. See below.
-- [ ] The **QR code** and short link open your URL on a phone.
+- [ ] The Theater and wall display no attendee QR code, short link, or Join button.
 - [ ] A **benign** warm-up prompt logs an **Informational** audit row (no
       incident). An **attack** chip raises a **Medium/High** Defender alert →
-      a **High** Sentinel incident → CareBot is **caged ~15s** later.
+      a **High** Sentinel incident → the active industry assistant is **caged ~15s** later.
 - [ ] **Reset demo** returns a clean slate *and* the opening story screen, ready
       for the next group. (On a URL pinned with `?intro=0` or `?persona=`, it
       honours that and skips the gates — reset always lands where a fresh load

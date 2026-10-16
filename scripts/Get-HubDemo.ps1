@@ -1,5 +1,5 @@
 # ==========================================================================
-#  CareBot @ Contoso Health - CTF demo : one-line bootstrap
+#  Catch & Cage: AI Agent Security CTF : one-line bootstrap
 # --------------------------------------------------------------------------
 #  Downloads the full deploy script from the public repo and runs it. The
 #  deploy script then clones an OFFLINE copy of the demo and drops desktop
@@ -25,8 +25,8 @@ $dstDir = Split-Path $dst
 if (-not (Test-Path $dstDir)) { New-Item -ItemType Directory -Path $dstDir -Force | Out-Null }
 
 Write-Host ''
-Write-Host 'CareBot CTF - bootstrap' -ForegroundColor White
-Write-Host '-----------------------' -ForegroundColor White
+Write-Host 'Catch & Cage - bootstrap' -ForegroundColor White
+Write-Host '------------------------' -ForegroundColor White
 Write-Host ("Downloading deploy script -> {0}" -f $dst) -ForegroundColor Cyan
 Invoke-WebRequest -Uri $raw -OutFile $dst -UseBasicParsing
 try { Unblock-File -Path $dst } catch {}

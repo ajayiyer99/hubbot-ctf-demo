@@ -1,4 +1,4 @@
-# Deploying the demo to Azure with scripts
+# Deploying Catch & Cage to Azure with scripts
 
 Two PowerShell scripts stand the whole demo up in Azure and tear it back down.
 They wrap the Azure CLI, so there is no portal clicking and nothing to remember.
@@ -47,6 +47,11 @@ That is the entire footprint. The demo is a static, mock-only single page app:
 no backend, no database, no container, no Azure OpenAI resource. Every Sentinel
 incident, Defender alert and SOAR playbook step you see on screen is simulated
 in the browser.
+
+The default Azure resource-group, Static Web App, cache-folder, and app-registration
+names retain their original `carebot` identifiers so existing deployments and
+teardown defaults continue to work. They are infrastructure identifiers, not the
+current product or Healthcare assistant name.
 ## Prerequisites
 
 - **Azure CLI** — <https://aka.ms/installazurecli>, then `az login`.
@@ -66,11 +71,11 @@ Both Windows PowerShell 5.1 and PowerShell 7 are supported.
 
 ## Anonymous by default, and why
 
-The demo is built for walk-up Innovation Hub audiences who scan a QR code and
-play from their own phones. Those phones are not in your tenant, so the default
-deployment is **anonymous on the Free plan**:
+The demo is presenter-led on a shared Hub display, with no attendee phone or QR
+participation. The default deployment is **anonymous on the Free plan**, so
+presenters can open it without signing in:
 
-- Anyone with the link can open it, which is what makes the QR join work.
+- Anyone with the link can open the shared demo.
 - The Free plan costs nothing.
 - Nothing sensitive is exposed. The "credentials" in the demo are synthetic
   honeypots and the source is already public on GitHub.
@@ -86,9 +91,8 @@ That switches the app to the **Standard** plan (roughly 9 USD per month, since
 custom identity providers are a Standard feature), creates the app registration
 and secret, wires the redirect URI and stores the credentials as app settings.
 
-> **Trade-off:** a tenant gate blocks anonymous phone and QR joins. Only people
-> in your tenant can open the demo. Use it for internal-only runs, not for a
-> public hub floor.
+> **Trade-off:** a tenant gate blocks anonymous access to the shared display.
+> Presenters must sign in with an account in your tenant.
 
 ## The config trap this avoids
 
@@ -152,17 +156,15 @@ The script is idempotent. Re-running it:
 
 So the normal way to publish a content change is simply to run it again.
 
-## Point the attendee QR at the new host
+## Point Hub shortcuts at the new host
 
-The in-app QR code and short link come from the **join URL**, which defaults to
-the `is.gd` short link, not to wherever you deployed. After deploying, either:
+Attendee phone joining is disabled in this presenter-led demo. To have the Hub
+desktop shortcuts open the new Azure host, run the shortcut deploy script with
+the URL printed at the end of the Azure deployment:
 
-1. open the demo, click **⚙ Settings**, and set the join URL to your new
-   `https://<name>.azurestaticapps.net/` address (it is saved per browser), or
-2. repoint the existing `is.gd` short link at the new host, which keeps any
-   printed QR codes and signage valid.
-
-Option 2 is the better choice once you have printed materials.
+```powershell
+.\Deploy-HubDemo.ps1 -BaseUrl https://<name>.azurestaticapps.net
+```
 
 ## Teardown
 
@@ -251,4 +253,4 @@ string such as `?cb=1` when checking.
 
 Deploying to Azure does not disable the existing GitHub Pages site. If the Azure
 copy is now the canonical one, go to the repository **Settings → Pages** and set
-the source to **None**, then update any links, signage and QR codes.
+the source to **None**, then update any presenter shortcuts and other links.

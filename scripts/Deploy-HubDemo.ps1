@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Deploys the CareBot @ Contoso Health prompt-injection CTF demo to a Microsoft
+    Deploys the Catch & Cage: AI Agent Security CTF to a Microsoft
     Innovation Hub PC: clones (or refreshes) an offline copy of the public repo and
     drops desktop shortcuts to the live demo entry points.
 
@@ -13,9 +13,9 @@
     while day-to-day launching uses the always-current hosted URL.
 
     Three internet shortcuts are created by default:
-      * CareBot CTF - Theater          -> <BaseUrl>/
-      * CareBot CTF - Lobby (attract)  -> <BaseUrl>/?mode=lobby
-      * CareBot CTF - 3-Screen Wall    -> <BaseUrl>/?panel=wall
+      * Catch & Cage - Theater          -> <BaseUrl>/
+      * Catch & Cage - Lobby (attract)  -> <BaseUrl>/?mode=lobby
+      * Catch & Cage - 3-Screen Wall    -> <BaseUrl>/?panel=wall
     Plus a folder shortcut to the offline clone. Use -IncludePanels to also add
     direct shortcuts to the individual wall panels (?panel=1|2|3).
 
@@ -106,14 +106,14 @@ function New-FolderShortcut {
     $wsh = New-Object -ComObject WScript.Shell
     $lnk = $wsh.CreateShortcut($Path)
     $lnk.TargetPath = $Target
-    $lnk.Description = 'Offline copy of the CareBot CTF demo (source backup)'
+    $lnk.Description = 'Offline copy of Catch & Cage (source backup)'
     $lnk.Save()
     [Runtime.InteropServices.Marshal]::ReleaseComObject($wsh) | Out-Null
 }
 
 Write-Host ''
-Write-Host 'CareBot @ Contoso Health - Hub demo deployment' -ForegroundColor White
-Write-Host '----------------------------------------------' -ForegroundColor White
+Write-Host 'Catch & Cage - Hub demo deployment' -ForegroundColor White
+Write-Host '-----------------------------------' -ForegroundColor White
 
 # --- Resolve the desktop target --------------------------------------------
 if (-not $DesktopPath) {
@@ -187,14 +187,14 @@ $iconArgs = @{}
 if (Test-Path $edge) { $iconArgs = @{ IconFile = $edge; IconIndex = 0 } }
 
 $shortcuts = [ordered]@{
-    'CareBot CTF - Theater.url'         = "$BaseUrl/"
-    'CareBot CTF - Lobby (attract).url' = "$BaseUrl/?mode=lobby"
-    'CareBot CTF - 3-Screen Wall.url'   = "$BaseUrl/?panel=wall"
+    'Catch & Cage - Theater.url'         = "$BaseUrl/"
+    'Catch & Cage - Lobby (attract).url' = "$BaseUrl/?mode=lobby"
+    'Catch & Cage - 3-Screen Wall.url'   = "$BaseUrl/?panel=wall"
 }
 if ($IncludePanels) {
-    $shortcuts['CareBot CTF - Wall Panel 1 (Agent).url']     = "$BaseUrl/?panel=1"
-    $shortcuts['CareBot CTF - Wall Panel 2 (Detection).url'] = "$BaseUrl/?panel=2"
-    $shortcuts['CareBot CTF - Wall Panel 3 (Response).url']  = "$BaseUrl/?panel=3"
+    $shortcuts['Catch & Cage - Wall Panel 1 (Agent).url']     = "$BaseUrl/?panel=1"
+    $shortcuts['Catch & Cage - Wall Panel 2 (Detection).url'] = "$BaseUrl/?panel=2"
+    $shortcuts['Catch & Cage - Wall Panel 3 (Response).url']  = "$BaseUrl/?panel=3"
 }
 
 $created = @()
@@ -207,9 +207,9 @@ foreach ($name in $shortcuts.Keys) {
 
 # Folder shortcut to the offline copy (source backup), unless clone was skipped.
 if (-not $SkipClone -and (Test-Path $InstallRoot)) {
-    $folderLnk = Join-Path $DesktopPath 'CareBot CTF - Offline Copy.lnk'
+    $folderLnk = Join-Path $DesktopPath 'Catch & Cage - Offline Copy.lnk'
     New-FolderShortcut -Path $folderLnk -Target $InstallRoot
-    Write-Ok "CareBot CTF - Offline Copy.lnk  ->  $InstallRoot"
+    Write-Ok "Catch & Cage - Offline Copy.lnk  ->  $InstallRoot"
     $created += $folderLnk
 }
 

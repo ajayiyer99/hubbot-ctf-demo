@@ -1,4 +1,4 @@
-# Architecture — CareBot Catch & Cage (Theater)
+# Architecture — Catch & Cage: AI Agent Security CTF (Healthcare example)
 
 Diagrams for facilitators and for the technical audiences who ask "what is
 actually happening here?"
@@ -164,10 +164,10 @@ Three ways to run it, in increasing order of control.
 | **Azure SWA, anonymous** | You want your own hostname and URL control | $0, Free plan |
 | **Azure SWA, Entra gated** | Internal-only audiences | About $9/mo, Standard plan |
 
-> **Choosing the gate.** A tenant gate blocks anonymous phone joins, so the QR
-> experience stops working for anyone outside your tenant. The shared Hub link
-> is gated, which is the right call for a facilitator-driven room and the wrong
-> one for a walk-up floor: for that, host an anonymous copy. Detail in
+> **Choosing the gate.** This is a presenter-led, show-only demo; there is no
+> attendee phone or QR experience. A tenant gate requires the presenter to sign
+> in on the shared display. Keep it anonymous for a Hub PC that should open
+> without a sign-in. Detail in
 > [azure-deploy-scripts.md](../azure-deploy-scripts.md).
 
 ---

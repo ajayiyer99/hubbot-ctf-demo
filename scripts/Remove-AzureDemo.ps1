@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Removes everything Deploy-AzureDemo.ps1 created for the CareBot CTF demo.
+    Removes everything Deploy-AzureDemo.ps1 created for the Catch & Cage demo.
 
 .DESCRIPTION
     Deletes the resource group (which takes the Static Web App with it) and,
@@ -19,7 +19,7 @@
     Also delete the Entra app registration created for the gate.
 
 .PARAMETER AppRegistrationName
-    Display name of the app registration. Default: CareBot Demo (SWA).
+    Display name of the app registration. Legacy default: CareBot Demo (SWA).
 
 .PARAMETER SubscriptionId
     Subscription to act against. Default: the current az subscription.
@@ -76,7 +76,7 @@ function Invoke-Az {
 }
 
 Write-Host ''
-Write-Host 'CareBot @ Contoso Health - Azure teardown' -ForegroundColor White
+Write-Host 'Catch & Cage - Azure teardown' -ForegroundColor White
 Write-Host '-----------------------------------------' -ForegroundColor White
 
 if (-not (Get-Command az -ErrorAction SilentlyContinue)) {

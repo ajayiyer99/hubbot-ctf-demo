@@ -1,4 +1,4 @@
-# Enablement video script — CareBot Catch & Cage (Theater)
+# Enablement video script — Catch & Cage: AI Agent Security CTF
 
 **A 5-minute walkthrough for other Hub SEs: what the demo is, how it works, and
 how to deliver it. Filmed on the 3-screen Envisioning Theater wall.**
@@ -48,11 +48,11 @@ you sliding back into demo narration.
 | ☐ | Open the three panels: `?panel=1`, `?panel=2`, `?panel=3` (or the **Wall · 3-screen** button) | One per screen, same origin, so they stay in sync |
 | ☐ | **F11 on every window** | Tabs, address bar and your bookmarks bar are otherwise on camera at 48 feet wide |
 | ☐ | Set browser zoom **before** you record, then leave it alone | Changing zoom mid-take puts the "175% / Reset" flyout on screen |
-| ☐ | Open `?persona=nurse&intro=0` on panel 1 | Skips the story screen and lens picker |
+| ☐ | Open `?industry=healthcare&persona=nurse&intro=0` on panel 1 | Presets the healthcare example and skips the opening gates |
 | ☐ | Engine pill reads **`engine: mock`** | Deterministic, so you can re-record one beat |
 | ☐ | **Settings → Detection latency → 8s**, **Response pace → 0.3s** | See the note below. This one is different from a screen-capture shoot. |
 | ☐ | Leave **Facilitator details** collapsed | It is the spoiler panel |
-| ☐ | Click **↻ Reset demo** | Green `🟢 CareBot: ACTIVE`, empty feed on all three. The pinned `?persona=nurse&intro=0` keeps it gate-free, so no story screen interrupts a take. |
+| ☐ | Click **↻ Reset demo** | Green `🟢 CareBot: ACTIVE`, empty feed on all three. The pinned industry/persona URL keeps it gate-free, so no opening screen interrupts a take. |
 | ☐ | Close Teams, Outlook, notifications | A toast is unmissable at wall scale |
 
 > **Do not compress detection to 4 seconds on a wall shoot.** On a single screen
@@ -104,8 +104,9 @@ frame, to one side. Hold four seconds before speaking.
 > And that" — *turn and point at panel 3* — "is Microsoft Sentinel shutting it
 > down on its own, about twenty-six seconds later. Nobody touched a keyboard.
 >
-> This is CareBot Catch and Cage. What it is, how it works, how to run it. Five
-> minutes."
+> This is Catch & Cage: AI Agent Security CTF. Healthcare is today's example;
+> the same presenter-led demo now covers fourteen industries. What it is, how
+> it works, how to run it. Five minutes."
 
 **Then** walk to the podium and click **↻ Reset demo** on camera. All three
 panels go green and empty. That reset is your transition.
@@ -225,18 +226,17 @@ same frame.
 > demo not running. This is the beat that gets lost if you shoot it mid-run.
 
 **SHOT:** Medium, you to camera. Cut in tight screen-capture inserts as you name
-each one: the **Persona** switcher opening, the **Join** QR dialog, the
+each one: the **Industry** picker, the **Persona** switcher opening, and the
 **Wall · 3-screen** button.
 
 > **SAY:** "Three things before you deliver it.
 >
-> Personas. Four lenses: patient, nurse, payor, security analyst. They change the
-> framing and the example prompts, not the detection. Payor for a health plan,
-> analyst for a SOC team.
+> First, choose the industry, then the persona. Both the business setting and its
+> available lenses, records, workflows and attack prompts adapt. For healthcare,
+> for example, payor is right for a health plan and analyst for a SOC team.
 >
-> Phones. There's a QR code. Hand the attack to the audience. It's a completely
-> different conversation when it's their sentence on the screen. That one needs
-> an ungated copy, since the Hub link asks for a sign-in.
+> This is presenter-led and show-only: there is no attendee QR code, short link,
+> or Join button. You drive the prompts on the room display.
 >
 > And you don't need a wall. It runs on one screen, and nearly all of this works
 > the same. The wall buys you the dwell-time shot.
@@ -280,8 +280,8 @@ If you need it shorter, drop these and you land at about 3:10:
   the cold open.
 - The commentary in **1:23 – 1:52**. Keep the click and the credential, cut the
   narration around it.
-- The persona and QR parts of **3:27 – 4:07**. Keep only the one-screen point and
-  the reset reminder.
+- The picker and persona parts of **3:27 – 4:07**. Keep only the one-screen
+  point and the reset reminder.
 
 Keep the cold open, the dwell gap, the containment payoff, the proof, and the
 honesty note. Those five are the video.

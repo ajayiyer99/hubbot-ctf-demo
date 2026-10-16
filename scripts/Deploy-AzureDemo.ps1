@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Provisions and deploys the CareBot @ Contoso Health prompt-injection CTF demo
+    Provisions and deploys the Catch & Cage: AI Agent Security CTF
     to Azure Static Web Apps, end to end, from one script.
 
 .DESCRIPTION
@@ -17,11 +17,10 @@
     database and no container, so this is the whole footprint.
 
     ANONYMOUS BY DEFAULT (important)
-    The demo is built for walk-up Innovation Hub audiences who join from their
-    phones by scanning a QR code. Those phones are not in your tenant, so the
-    default deployment is anonymous on the Free plan, which also costs nothing.
-    Add -EnableEntraGate only when you want the whole site behind a tenant
-    sign-in, and accept that it blocks anonymous phone and QR joins.
+    The demo is presenter-led on a shared Hub display and has no attendee phone
+    or QR participation. The default deployment is anonymous on the Free plan,
+    so presenters can open it without signing in. Add -EnableEntraGate only
+    when you want the whole site behind a tenant sign-in.
 
     CONFIG SAFETY
     The staticwebapp.config.json committed to this repository gates every route
@@ -36,14 +35,14 @@
     Supports -WhatIf to preview every action without changing anything.
 
 .PARAMETER ResourceGroup
-    Resource group to create or reuse. Default: rg-carebot-ctf. If the group
+    Resource group to create or reuse. Legacy default: rg-carebot-ctf. If the group
     already exists and you have Contributor on it, the deployment needs no
     subscription-level permission at all, which is the usual arrangement on a
     governed landing zone.
 
 .PARAMETER Name
     Static Web App name (must be globally unique-ish within the region).
-    Default: carebot-ctf plus a short random suffix on first run.
+    Legacy naming default: carebot-ctf plus a short random suffix on first run.
 
 .PARAMETER Location
     Azure region. Static Web Apps is only offered in five regions; centralus and
@@ -56,14 +55,14 @@
 .PARAMETER EnableEntraGate
     Put the entire site behind a single-tenant Microsoft Entra ID sign-in.
     Creates the app registration, a client secret and the app settings, and
-    deploys the gated config. This blocks anonymous phone and QR joins.
+    deploys the gated config. Presenters must sign in to use the shared display.
 
 .PARAMETER TenantId
     Tenant to restrict to when -EnableEntraGate is set. Default: the tenant of
     the currently signed-in az session.
 
 .PARAMETER AppRegistrationName
-    Display name of the Entra app registration. Default: CareBot Demo (SWA).
+    Display name of the Entra app registration. Legacy default: CareBot Demo (SWA).
 
 .PARAMETER RotateSecret
     Force creation of a new client secret even when one is already configured.
@@ -296,7 +295,7 @@ function Get-StaticSitesClient {
 }
 
 Write-Host ''
-Write-Host 'CareBot @ Contoso Health - Azure deployment' -ForegroundColor White
+Write-Host 'Catch & Cage - Azure deployment' -ForegroundColor White
 Write-Host '-------------------------------------------' -ForegroundColor White
 
 # --- Preflight ---------------------------------------------------------------
@@ -358,10 +357,10 @@ if ($EnableEntraGate -and $Sku -ne 'Standard') {
 if ($EnableEntraGate) {
     if (-not $TenantId) { $TenantId = $account.tenantId }
     Write-Ok "Entra gate ON, restricted to tenant $TenantId"
-    Write-Warn2 'A tenant gate blocks anonymous phone and QR joins. Attendees must be in this tenant.'
+    Write-Warn2 'A tenant gate requires presenters using the shared display to sign in with an account in this tenant.'
 }
 else {
-    Write-Ok 'Entra gate OFF (anonymous access, so QR joins work). Use -EnableEntraGate to gate it.'
+    Write-Ok 'Entra gate OFF (presenters can open the shared display without signing in). Use -EnableEntraGate to gate it.'
 }
 
 # Does the resource group already exist? This is only a hint. It decides whether
@@ -573,7 +572,7 @@ if (-not $SkipContentDeploy) {
             }
             $json = $anon | ConvertTo-Json -Depth 6
             [IO.File]::WriteAllText($configOut, $json, (New-Object Text.UTF8Encoding($false)))
-            Write-Ok 'Anonymous config staged (no auth gate, QR joins work).'
+            Write-Ok 'Anonymous config staged (no sign-in gate).'
         }
 
         # --- Upload ----------------------------------------------------------
@@ -644,7 +643,6 @@ Write-Host '  Demo URLs' -ForegroundColor White
 Write-Host ("    Theater (CTF)   : {0}/" -f $siteUrl)
 Write-Host ("    Lobby (attract) : {0}/?mode=lobby" -f $siteUrl)
 Write-Host ("    3-screen wall   : {0}/?panel=wall" -f $siteUrl)
-Write-Host ("    Attendee join   : {0}/" -f $siteUrl)
 Write-Host ''
 Write-Host '  Azure' -ForegroundColor White
 Write-Host ("    Resource group  : {0}" -f $ResourceGroup)
@@ -655,7 +653,6 @@ if ($EnableEntraGate) {
 Write-Host ''
 if ($Sku -eq 'Free') { Write-Note 'Free plan: no ongoing cost for this demo.' }
 else { Write-Note 'Standard plan: about 9 USD per month while it exists.' }
-Write-Note 'Attendee QR: open the demo, go to Settings (gear icon) and set the join URL to'
-Write-Note "  $siteUrl/   (or repoint your is.gd short link at it, which keeps printed QR codes valid)."
+Write-Note 'This is a presenter-led, show-only demo; no attendee QR or Join flow is exposed.'
 Write-Note "Tear it all down with: .\Remove-AzureDemo.ps1 -ResourceGroup $ResourceGroup"
 Write-Host ''

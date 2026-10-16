@@ -5,7 +5,7 @@
 > See **[azure-deploy-scripts.md](azure-deploy-scripts.md)**. Keep reading for the
 > manual portal walkthrough.
 
-This guide moves the CareBot demo from GitHub Pages to Azure Static Web Apps (SWA)
+This guide moves the Catch & Cage demo from GitHub Pages to Azure Static Web Apps (SWA)
 and puts the whole app behind Microsoft Entra ID, restricted to a single tenant.
 The app stays mock-only. There is no backend and no container.
 
@@ -23,8 +23,8 @@ The app stays mock-only. There is no backend and no container.
   private if the source itself must be restricted.
 - It does not keep the old GitHub Pages copy private. Disable Pages (step 7) or
   the ungated copy stays live.
-- Gating the whole app also blocks anonymous phone or QR joins. Only people in
-  your tenant can open the demo. This is expected for a full-app gate.
+- Gating the whole app also blocks anonymous access from Hub display PCs.
+  Presenters must sign in with an account in your tenant to open the demo.
 
 ## Cost note
 
@@ -42,7 +42,7 @@ provider that accepts any Microsoft account, which is not a real gate.
 
 1. In the Azure portal, go to Microsoft Entra ID, then App registrations, then
    New registration.
-2. Name it something like `CareBot Demo (SWA)`.
+2. Name it something like `Catch & Cage Demo (SWA)`.
 3. Under Supported account types, choose
    **Accounts in this organizational directory only (single tenant)**. This is
    what enforces the tenant restriction.
@@ -109,8 +109,8 @@ the repository.
 ## Step 7: Retire the ungated GitHub Pages site
 
 In the repository, go to Settings, then Pages, and set Source to None. Otherwise
-the old ungated copy stays live at the github.io URL. Update any links, including
-the join URL and any QR codes, to the new SWA hostname.
+the old ungated copy stays live at the github.io URL. Update your presenter
+shortcuts and other links to the new SWA hostname.
 
 ## Optional: custom domain
 

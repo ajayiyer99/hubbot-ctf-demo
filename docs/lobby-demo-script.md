@@ -1,4 +1,4 @@
-# CareBot Catch &amp; Cage — Lobby Demo Script
+# Catch & Cage — Healthcare Lobby Demo Script
 
 **A talk‑track + runbook for Hub Directors and Hub Solution Engineers delivering the Lobby experience live.**
 
@@ -51,7 +51,7 @@ Point at the screen as you name each zone.
 - **The mission (left panel).** "An attacker wants CareBot to do any one of these: **🚩 reveal the EHR service credential**, **🧠 leak the hidden system prompt**, **🗂️ dump the patient roster (PHI)**, **🔓 break the glass on a VIP chart**, **🚑 suppress a clinical safety alert**, or **💳 force‑approve a prior authorization**."
 - **Right = the Security Operations view (the 'Security Monitor').**
   - **`🟢 CareBot: ACTIVE`** — the agent's live status.
-  - **`🛡️ Microsoft Sentinel — Incidents`** — the live incident feed (workspace **`CareBot-SecOps · Log Analytics`**, *Live · auto‑refresh 30s*).
+  - **`🛡️ Microsoft Sentinel — Incidents`** — the live incident feed (workspace **`CatchAndCage-SecOps · Log Analytics`**, *Live · auto‑refresh 30s*).
   - **`🚨 Automated response · SOAR playbook`** — the containment timeline.
 
 > **SAY:** "Left is the experience a patient or clinician sees. Right is what the security team sees at the same moment. Keep one eye on each."
@@ -90,7 +90,7 @@ Turn the room's attention to the right panel. About **15 seconds** after the att
 - **MITRE ATT&CK tactics** come from the alert itself, so the same `AI.Azure_*` ID always shows the same tactics no matter which attack tripped it. The scenario‑specific reading is carried by the ATLAS technique and the OWASP risk.
 - **Standards chips** on the card: a **MITRE ATLAS** technique, an **OWASP LLM Top‑10** risk, and — on PHI‑relevant detections — a **HIPAA Security Rule** tag. (All link to authoritative source docs.)
 - The offending prompt captured as **evidence**.
-- **`🗄️ Table SecurityAlert · Log Analytics CareBot-SecOps · via the Microsoft Defender for Cloud connector`** — "this is real, queryable telemetry from a first‑party detection, not a toast notification."
+- **`🗄️ Table SecurityAlert · Log Analytics CatchAndCage-SecOps · via the Microsoft Defender for Cloud connector`** — "this is real, queryable telemetry from a first‑party detection, not a toast notification."
 
 **Then the `🚨 SOAR playbook` runs — first it correlates the alert into a prioritized incident:**
 1. Defender for Cloud **alert raised** — *Severity Medium/High (catalog)*

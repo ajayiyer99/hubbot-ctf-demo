@@ -1,4 +1,4 @@
-# Bill of materials — CareBot Catch & Cage (Theater)
+# Bill of materials — Catch & Cage: AI Agent Security CTF
 
 Everything needed to deliver the Theater experience, with real costs and setup
 times. Nothing here is aspirational: it is what the demo actually uses today.

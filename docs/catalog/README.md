@@ -1,4 +1,4 @@
-# Catalog kit — CareBot Catch & Cage (Theater)
+# Catalog kit — Catch & Cage: AI Agent Security CTF
 
 Everything needed to **share this demo with others** and deliver it to
 customers. Written for people who did not build it.
@@ -43,11 +43,11 @@ without loss.
 
 **Run it:** [aka.ms/hub/carebot-demo](https://aka.ms/hub/carebot-demo) — the Hub
 link. Sign in with your Microsoft account; it is gated to the tenant, so
-attendee phones cannot join anonymously.
+attendee phone participation is not offered. The presenter drives the demo.
 
-**In one line:** visitors talk a healthcare AI agent into leaking a credential
-or dumping patient records using nothing but plain English, then watch Microsoft
-Sentinel and a SOAR playbook cage it automatically in about 26 seconds.
+**In one line:** visitors talk an AI agent into leaking an industry-specific
+credential or confidential records using nothing but plain English, then watch
+Microsoft Sentinel and a SOAR playbook cage it automatically in about 26 seconds.
 
 > **Scope.** This kit covers the **Theater** experience: the facilitated,
 > interactive CTF. Delivery guidance for the unattended Lobby attract screen is
