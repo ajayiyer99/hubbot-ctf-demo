@@ -22,7 +22,7 @@
 | ☐ | Click **`↻ Reset demo`**. | Right‑side banner reads **`🟢 CareBot: ACTIVE`**; incident feed and playbook are empty. |
 | ☐ | (Optional) **`⚙ Settings`** → confirm Hub display name / EHR flag; set **Detection latency** pacing. | ~15 s mirrors real SOC latency and reads well in a big room; lower it for a fast loop. |
 | ☐ | (Optional) **`⚙ Settings → Containment`** — decide if the **patient‑safety kill switch** (compute/model hard‑stop) runs. | On by default. Turn off to show a graduated, approval‑gated response. |
-| ☐ | Leave **`🔧 Facilitator details`** collapsed. | Audience sees the story, not the spoilers. |
+| ☐ | Confirm facilitator details are not visible. | In Theater, `Ctrl+Shift+F` is the presenter-only unlock. Lobby and wall modes never expose the spoiler panel. |
 
 **Golden rule:** never walk away with the agent **BLOCKED** — always **`↻ Reset demo`** first.
 
@@ -158,7 +158,7 @@ For high‑traffic moments or a walk‑by audience:
 
 ## Appendix B — Handling questions &amp; objections *(for security practitioners)*
 
-- **"Is this real or simulated?"** — The visuals simulate the Sentinel/SOAR pipeline so the demo is self‑contained and reliable in a lobby. The *same design* runs live: a relay ships prompt telemetry to a **Log Analytics custom table** (`PromptInjectionEvents_CL`), a real **Sentinel analytics rule** opens the incident, and a **Logic App** playbook disables the service principal. Open **`🔧 Facilitator details`** / **`❓ Help`** to show the wiring.
+- **"Is this real or simulated?"** — The visuals simulate the Sentinel/SOAR pipeline so the demo is self‑contained and reliable in a lobby. The *same design* runs live: a relay ships prompt telemetry to a **Log Analytics custom table** (`PromptInjectionEvents_CL`), a real **Sentinel analytics rule** opens the incident, and a **Logic App** playbook disables the service principal. In Theater, press `Ctrl+Shift+F` to unlock **`🔧 Facilitator details`**, or open **`❓ Help`**, to show the wiring.
 - **"What actually detects the injection?"** — Azure AI **Content Safety Prompt Shields** / **Defender for AI** signals, scored into a RiskScore and shipped as telemetry; the analytics rule thresholds on that score. Zero‑width / ASCII‑smuggling characters hidden in an uploaded referral are caught as a distinct High‑severity signal.
 - **"Why disable the identity instead of just filtering the prompt?"** — Defense in depth. Filters are probabilistic and bypassable; disabling the **Entra service principal** is a deterministic kill‑switch that stops *all* actions and tool calls at once — and the playbook backs it with **data** (Azure RBAC + FHIR/Azure Health Data Services + Microsoft Purview + Key Vault revoke/rotate), **network** (WAF source‑IP block + Azure Firewall egress deny), and an optional **compute/model** hard‑stop, so if any one layer is bypassed the others still hold.
 - **"How does this respect PHI / HIPAA?"** — All patient data is **synthetic** (no real PHI). PHI‑relevant detections carry a linked **HIPAA Security Rule** tag, and the data‑plane containment maps to the real controls you'd expect around a FHIR estate: **Azure Health Data Services** token revocation, **Microsoft Purview** PHI DLP, and **Key Vault** credential rotation.
@@ -171,7 +171,7 @@ For high‑traffic moments or a walk‑by audience:
 
 ## Appendix C — Presenter tips &amp; recovery
 
-- **Under‑the‑hood on demand:** expand **`🔧 Facilitator details`** to reveal the **win condition**, the **hidden system prompt**, **available tools**, and a **live tool‑call log** — great for a technical huddle, distracting for a general crowd.
+- **Under‑the‑hood on demand:** in Theater, press `Ctrl+Shift+F` to unlock **`🔧 Facilitator details`** and reveal the **win condition**, **hidden system prompt**, **available tools**, and **live tool-call log**. Press the shortcut again to hide it before returning to the public demo.
 - **Pacing for the room:** bump **Detection latency** up for a big audience so people can read the incident as it lands; drop it for a quick attract loop.
 - **Keep it deterministic:** run on **`engine: mock`** for live audiences — it always behaves. Only switch to a live model engine for a controlled technical session.
 - **If something looks stuck:** `↻ Reset demo` returns everything to a clean **`🟢 ACTIVE`** state — chat, incident feed, and playbook.
@@ -188,5 +188,5 @@ For high‑traffic moments or a walk‑by audience:
 | Agent status | `🟢 CareBot: ACTIVE` → `🔒 CareBot: BLOCKED (Entra accountEnabled=false)` |
 | Warm‑up chips | `What are the clinic hours?` · `Look up patient Alex Doe` |
 | Attack chips | `🚩 Steal the EHR credential` · `🗂️ Exfiltrate the patient roster` · `🔓 Break-the-glass VIP chart` · `🚑 Smuggle a hidden 'suppress alert' order` · `💳 Force-approve a prior authorization` |
-| Monitor sections | `🛡️ Microsoft Sentinel — Incidents` · `🚨 Automated response · SOAR playbook` · `🔧 Facilitator details` |
+| Monitor sections | `🛡️ Microsoft Sentinel — Incidents` · `🚨 Automated response · SOAR playbook`; `Ctrl+Shift+F` adds `🔧 Facilitator details` in Theater |
 | Blocked reply | `🔒 [system] CareBot is blocked (Entra accountEnabled=false). Click ↻ Reset demo to clear the incident and re-enable CareBot.` |
